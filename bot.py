@@ -12,42 +12,97 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
-URL = "https://www.amazon.in/gp/bestsellers/apparel/"
+CATEGORIES = [
+    "https://www.amazon.in/gp/bestsellers/electronics/",
+    "https://www.amazon.in/gp/bestsellers/computers/",
+    "https://www.amazon.in/gp/bestsellers/hpc/",
+]
 
-def send_media_group(products):
-    media = []
-    for i, (title, price, link, image_url) in enumerate(products, start=1):
-        caption = (
-            f"{'🥇' if i==1 else '🥈' if i==2 else '🥉'} <b>{title}</b>\n"
-            f"💰 {price}\n"
-            f"👉 <a href=\"{link}\">Buy Now</a>"
-        )
-        media.append({
-            "type": "photo",
-            "media": image_url,
-            "caption": caption,
-            "parse_mode": "HTML"
-        })
+def get_product_details(product_url):
+    try:
+        resp = requests.get(product_url, headers=HEADERS, timeout=12)
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMediaGroup"
+        # Rating
+        rating = ""
+        rating_tag = soup.select_one("span.a-icon-alt")
+        if rating_tag:
+            rating = rating_tag.get_text(strip=True).split(" ")[0]
+
+        # Review count
+        reviews = ""
+        reviews_tag = soup.select_one("#acrCustomerReviewText")
+        if reviews_tag:
+            reviews = reviews_tag.get_text(strip=True).replace(" ratings", "").replace(" rating", "")
+
+        # Seller
+        seller = ""
+        seller_tag = soup.select_one("#sellerProfileTriggerId") or soup.select_one("#merchant-info a")
+        if seller_tag:
+            seller = seller_tag.get_text(strip=True)
+
+        # Original MRP
+        original_price = ""
+        mrp_tag = soup.select_one("span.a-price.a-text-price span.a-offscreen")
+        if mrp_tag:
+            original_price = mrp_tag.get_text(strip=True)
+
+        # Discount %
+        discount = ""
+        discount_tag = soup.select_one("span.savingsPercentage")
+        if discount_tag:
+            discount = discount_tag.get_text(strip=True)
+
+        return rating, reviews, seller, original_price, discount
+    except:
+        return "", "", "", "", ""
+
+
+def send_product_post(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller):
+    lines = []
+
+    lines.append(f"🎧 <b>{title}</b>")
+    lines.append("")
+
+    if original_price and discount:
+        lines.append(f"💰 <b>At only {price} instead of {original_price} <i>({discount})</i></b>")
+    else:
+        lines.append(f"💰 <b>At only {price}</b>")
+
+    lines.append("")
+    lines.append(f"🔗 <a href=\"{affiliate_link}\">Buy Now</a>")
+
+    if rating or reviews:
+        lines.append("")
+        review_line = ""
+        if reviews:
+            review_line += f"⭐ {reviews} Reviews"
+        if rating:
+            review_line += f": {rating} / 5.0"
+        lines.append(review_line)
+
+    if seller:
+        lines.append(f"🚚 Sold by <i>{seller}</i> and shipped by Amazon")
+
+    caption = "\n".join(lines)
+
+    # Telegram caption max 1024 chars
+    if len(caption) > 1024:
+        caption = caption[:1021] + "..."
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     data = {
         "chat_id": CHAT_ID,
-        "media": json.dumps(media)
-    }
-    response = requests.post(url, data=data)
-    return response
-
-def send_header():
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    data = {
-        "chat_id": CHAT_ID,
-        "text": "🔥 <b>TOP 3 HOT DEALS TODAY</b>\n⚡ Hurry! Deals may expire anytime!",
+        "photo": image_url,
+        "caption": caption,
         "parse_mode": "HTML"
     }
-    requests.post(url, data=data)
+    return requests.post(url, data=data)
+
 
 def scrape_products():
-    page = requests.get(URL, headers=HEADERS)
+    url = random.choice(CATEGORIES)
+    page = requests.get(url, headers=HEADERS, timeout=15)
     soup = BeautifulSoup(page.text, "html.parser")
 
     items = soup.select(".zg-grid-general-faceout")
@@ -63,17 +118,29 @@ def scrape_products():
             price_tag = item.select_one(".p13n-sc-price")
             price = price_tag.get_text(strip=True) if price_tag else "Check price"
 
-            affiliate_link = link.split("?")[0] + f"?tag={AFFILIATE_ID}"
+            # Clean affiliate link
+            base_link = link.split("?")[0]
+            affiliate_link = base_link + f"?tag={AFFILIATE_ID}"
 
             if image_url and title:
-                products.append((title, price, affiliate_link, image_url))
+                products.append((title, price, affiliate_link, image_url, base_link))
         except:
             continue
 
     return products
 
+
+def send_header():
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    requests.post(url, data={
+        "chat_id": CHAT_ID,
+        "text": "🔥 <b>TOP DEALS OF THE DAY</b>\n⚡ Hurry! Limited time offers!",
+        "parse_mode": "HTML"
+    })
+
+
 def run_bot():
-    print("🚀 PRO BOT STARTED (with images)")
+    print("🚀 PRO BOT STARTED — image + description mode")
 
     while True:
         try:
@@ -81,27 +148,33 @@ def run_bot():
 
             if len(products) >= 3:
                 selected = random.sample(products, 3)
+
                 send_header()
                 time.sleep(1)
-                response = send_media_group(selected)
 
-                if response.status_code == 200:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Posted 3 products with images")
-                else:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Media group failed ({response.status_code}), trying text post")
-                    # Fallback to text-only if images fail
-                    message = "🔥 <b>TOP 3 HOT DEALS</b>\n\n"
-                    for i, (title, price, link, _) in enumerate(selected, start=1):
-                        message += f"{i}️⃣ <b>{title}</b>\n💰 {price}\n👉 <a href=\"{link}\">Buy Now</a>\n\n"
-                    message += "⚡ Hurry! Deals may expire anytime!"
-                    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-                    requests.post(url, data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"})
+                for title, price, affiliate_link, image_url, base_link in selected:
+                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Fetching details: {title[:50]}")
+                    rating, reviews, seller, original_price, discount = get_product_details(base_link)
+
+                    resp = send_product_post(
+                        title, price, original_price, discount,
+                        image_url, affiliate_link,
+                        rating, reviews, seller
+                    )
+
+                    if resp.status_code == 200:
+                        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Posted: {title[:50]}")
+                    else:
+                        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Error {resp.status_code}: {resp.text[:120]}")
+
+                    time.sleep(2)
+
             else:
                 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Not enough products scraped ({len(products)} found)")
 
         except Exception as e:
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ❌ Error: {e}")
 
-        time.sleep(1200)  # 20 minutes
+        time.sleep(1200)  # post every 20 minutes
 
 run_bot()
