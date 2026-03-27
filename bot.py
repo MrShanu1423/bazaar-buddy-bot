@@ -140,41 +140,35 @@ def send_header():
 
 
 def run_bot():
-    print("🚀 PRO BOT STARTED — image + description mode")
+    print("🚀 BOT STARTED — 1 product every 20 minutes")
 
     while True:
         try:
             products = scrape_products()
 
-            if len(products) >= 3:
-                selected = random.sample(products, 3)
+            if products:
+                title, price, affiliate_link, image_url, base_link = random.choice(products)
 
-                send_header()
-                time.sleep(1)
+                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Fetching details: {title[:50]}")
+                rating, reviews, seller, original_price, discount = get_product_details(base_link)
 
-                for title, price, affiliate_link, image_url, base_link in selected:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Fetching details: {title[:50]}")
-                    rating, reviews, seller, original_price, discount = get_product_details(base_link)
+                resp = send_product_post(
+                    title, price, original_price, discount,
+                    image_url, affiliate_link,
+                    rating, reviews, seller
+                )
 
-                    resp = send_product_post(
-                        title, price, original_price, discount,
-                        image_url, affiliate_link,
-                        rating, reviews, seller
-                    )
-
-                    if resp.status_code == 200:
-                        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Posted: {title[:50]}")
-                    else:
-                        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Error {resp.status_code}: {resp.text[:120]}")
-
-                    time.sleep(2)
+                if resp.status_code == 200:
+                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Posted: {title[:50]}")
+                else:
+                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Error {resp.status_code}: {resp.text[:120]}")
 
             else:
-                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Not enough products scraped ({len(products)} found)")
+                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ No products scraped")
 
         except Exception as e:
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ❌ Error: {e}")
 
-        time.sleep(1200)  # post every 20 minutes
+        time.sleep(1200)  # 1 post every 20 minutes
 
 run_bot()
