@@ -5,7 +5,7 @@ import random
 
 BOT_TOKEN = "8608712234:AAEQIOKSBzTeDnIZeuVUg-3mobgbBIT_KVU"
 CHAT_ID = "-1003706154836"
-AFFILIATE_ID = "yourtag-21"
+AFFILIATE_ID = "dattatrey07-21"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
