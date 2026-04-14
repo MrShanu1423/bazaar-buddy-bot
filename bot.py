@@ -9,7 +9,7 @@ CHAT_ID = "-1003706154836"
 AFFILIATE_ID = "dattatrey07-21"
 
 FB_PAGE_ID = "1060781310451431"
-FB_PAGE_TOKEN = "EAANdFOZCViOQBRHt7O5UyUCELkwtCrMxVjX8mbwywDimrW4RkENqHSJESSsxMF7JLKI8pqPm3RqmJvqGdC7nMZCUKt5go61gG4qTgNCDGzqZBafmyc04ieKWI2mT9ai18K1JXi02M1RRYMkcQJR7EZCcYvfX0rJlSUYUEkiTBP3fXUZBFwldt3jRO8tQtGuZArz2DOVQZDZD"
+FB_USER_TOKEN = "EAANdFOZCViOQBRJQpCnj4s6gZBxWV6PvIg48wMY3IwsFlTYREoF2P9QzoXr7VxOUxvk5y8twm0RVLbQEhlXYZC1a9P7DnGwheXsMqme7KNZCNQ2ZCWXQ2A7r8OQiziTUSuRL4ZBoohgymiUqUA3WMWfwobMmu8SNpZCTprSm6TRkRzRe0YfZA08GqZCKIR76sZBliDAe6kaqJtAmGBGzUkeS5e1pMZBd1umZBcH4XK03fEtVWjJfnN9fP0UtxbzagUSPm5ZByQnswz2RZB269Ja5RQWxHy"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -115,16 +115,43 @@ def send_to_telegram(title, price, original_price, discount, image_url, affiliat
     return resp.status_code == 200
 
 
+def get_fb_page_token():
+    try:
+        r = requests.get(f"https://graph.facebook.com/me/accounts?access_token={FB_USER_TOKEN}", timeout=10)
+        pages = r.json().get("data", [])
+        for page in pages:
+            if page.get("id") == FB_PAGE_ID:
+                return page.get("access_token", "")
+        if pages:
+            return pages[0].get("access_token", "")
+    except:
+        pass
+    return ""
+
+
 def post_to_facebook(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller):
     message = build_caption_plain(title, price, original_price, discount, affiliate_link, rating, reviews, seller)
+    page_token = get_fb_page_token()
+    if not page_token:
+        return False, "Could not get page token"
 
-    url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
-    resp = requests.post(url, data={
-        "url": image_url,
-        "message": message,
-        "access_token": FB_PAGE_TOKEN
-    })
-    return resp.status_code == 200, resp.text
+    try:
+        # Download image from Amazon
+        img_resp = requests.get(image_url, headers=HEADERS, timeout=10)
+        if img_resp.status_code != 200:
+            return False, f"Image download failed: {img_resp.status_code}"
+
+        # Upload image directly to Facebook
+        url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
+        resp = requests.post(url, data={
+            "message": message,
+            "access_token": page_token
+        }, files={
+            "source": ("product.jpg", img_resp.content, "image/jpeg")
+        })
+        return resp.status_code == 200, resp.text
+    except Exception as e:
+        return False, str(e)
 
 
 def scrape_products():
