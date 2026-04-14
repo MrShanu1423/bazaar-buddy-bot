@@ -141,15 +141,28 @@ def post_to_facebook(title, price, original_price, discount, image_url, affiliat
         if img_resp.status_code != 200:
             return False, f"Image download failed: {img_resp.status_code}"
 
-        # Upload image directly to Facebook
-        url = f"https://graph.facebook.com/{FB_PAGE_ID}/photos"
-        resp = requests.post(url, data={
-            "message": message,
-            "access_token": page_token
-        }, files={
-            "source": ("product.jpg", img_resp.content, "image/jpeg")
-        })
-        return resp.status_code == 200, resp.text
+        # Step 1: Upload photo as unpublished to get photo ID
+        photo_resp = requests.post(
+            f"https://graph.facebook.com/{FB_PAGE_ID}/photos",
+            data={"published": "false", "access_token": page_token},
+            files={"source": ("product.jpg", img_resp.content, "image/jpeg")}
+        )
+        photo_data = photo_resp.json()
+        photo_id = photo_data.get("id")
+
+        if not photo_id:
+            return False, f"Photo upload failed: {photo_resp.text[:150]}"
+
+        # Step 2: Post to page feed with attached photo (shows in main timeline)
+        feed_resp = requests.post(
+            f"https://graph.facebook.com/{FB_PAGE_ID}/feed",
+            data={
+                "message": message,
+                "attached_media": json.dumps([{"media_fbid": photo_id}]),
+                "access_token": page_token
+            }
+        )
+        return feed_resp.status_code == 200, feed_resp.text
     except Exception as e:
         return False, str(e)
 
