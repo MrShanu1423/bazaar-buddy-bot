@@ -9,7 +9,7 @@ CHAT_ID = "-1003706154836"
 AFFILIATE_ID = "dattatrey07-21"
 
 FB_PAGE_ID = "1060781310451431"
-FB_USER_TOKEN = "EAANdFOZCViOQBRM1vtPoPvsRq77y9TG98yiGLpPxuedyhgbJm0W1M17lTvkRta6bLGRmc9SmVk0ebpLZB9FOiQLXLBlC3ZAcWCEAfIRWruUxmzPRXJwvJKoZADMz5QBa10oLE62QldLgnpgy4OzeNeb9qg4zHCfJk2rZCoYe9EPHxbbOiEpqK7nOiY2s7mds8hsNy8JBWMuqSsiiZCSH63k41exOUTUBjGLbeAvq2CwpF84syuatdpmgFkcyH966kQXbYDJ6QDuJZBOtUzUuDaO"
+FB_PAGE_TOKEN = "EAANdFOZCViOQBRKZBka51SPXZBNnPqZCccPOuLPXK9kPcud72aWNZBQSYa9aPUG2rlwWDMCpFb4XNZAUmTfFT41QATFFmsFzu8HNaZAlaiom7FH3xDh83oBgZADn2ZB9K1G3Cmoz2xiRoQHB5uY2ZB8J6B1LbX9hXWaxhYTRNjZC85Shj9mCRai0S7Lwhb2U1P1DWg6TIn6"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -116,17 +116,7 @@ def send_to_telegram(title, price, original_price, discount, image_url, affiliat
 
 
 def get_fb_page_token():
-    try:
-        r = requests.get(f"https://graph.facebook.com/me/accounts?access_token={FB_USER_TOKEN}", timeout=10)
-        pages = r.json().get("data", [])
-        for page in pages:
-            if page.get("id") == FB_PAGE_ID:
-                return page.get("access_token", "")
-        if pages:
-            return pages[0].get("access_token", "")
-    except:
-        pass
-    return ""
+    return FB_PAGE_TOKEN
 
 
 def post_to_facebook(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller):
