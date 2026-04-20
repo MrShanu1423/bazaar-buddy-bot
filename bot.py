@@ -19,6 +19,8 @@ CATEGORIES = [
     "https://www.amazon.in/gp/bestsellers/electronics/",
     "https://www.amazon.in/gp/bestsellers/computers/",
     "https://www.amazon.in/gp/bestsellers/hpc/",
+    "https://www.amazon.in/gp/bestsellers/kitchen/",
+    "https://www.amazon.in/gp/bestsellers/kitchen/1380367031/",
 ]
 
 
