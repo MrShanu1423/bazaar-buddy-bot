@@ -61,14 +61,14 @@ def get_product_details(product_url):
 
 def build_caption_plain(title, price, original_price, discount, affiliate_link, rating, reviews, seller):
     lines = []
-    lines.append(f"🎧 {title}")
+    lines.append(f"🛒 BUY NOW 👉 {affiliate_link}")
+    lines.append("")
+    lines.append(f"🔥 {title}")
     lines.append("")
     if original_price and discount:
         lines.append(f"💰 At only {price} instead of {original_price} ({discount})")
     else:
         lines.append(f"💰 At only {price}")
-    lines.append("")
-    lines.append(f"🔗 Buy Now: {affiliate_link}")
     if rating or reviews:
         lines.append("")
         review_line = ""
@@ -79,19 +79,21 @@ def build_caption_plain(title, price, original_price, discount, affiliate_link, 
         lines.append(review_line)
     if seller:
         lines.append(f"🚚 Sold by {seller} and shipped by Amazon")
+    lines.append("")
+    lines.append(f"👉 Order Here: {affiliate_link}")
     return "\n".join(lines)
 
 
 def send_to_telegram(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller):
     lines = []
-    lines.append(f"🎧 <b>{title}</b>")
+    lines.append(f"🛒 <a href=\"{affiliate_link}\"><b>BUY NOW 👉 CLICK HERE</b></a>")
+    lines.append("")
+    lines.append(f"🔥 <b>{title}</b>")
     lines.append("")
     if original_price and discount:
         lines.append(f"💰 <b>At only {price} instead of {original_price} <i>({discount})</i></b>")
     else:
         lines.append(f"💰 <b>At only {price}</b>")
-    lines.append("")
-    lines.append(f"🔗 <a href=\"{affiliate_link}\">Buy Now</a>")
     if rating or reviews:
         lines.append("")
         review_line = ""
@@ -102,23 +104,68 @@ def send_to_telegram(title, price, original_price, discount, image_url, affiliat
         lines.append(review_line)
     if seller:
         lines.append(f"🚚 Sold by <i>{seller}</i> and shipped by Amazon")
+    lines.append("")
+    lines.append(f"👉 <a href=\"{affiliate_link}\"><b>Order Here</b></a>")
 
     caption = "\n".join(lines)
     if len(caption) > 1024:
         caption = caption[:1021] + "..."
 
+    # Use high-res image
+    hi_res_url = upgrade_image_quality(image_url)
+    img_bytes = download_high_res_image(image_url)
+
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-    resp = requests.post(url, data={
-        "chat_id": CHAT_ID,
-        "photo": image_url,
-        "caption": caption,
-        "parse_mode": "HTML"
-    })
+    if img_bytes:
+        # Upload bytes directly for guaranteed high quality delivery
+        resp = requests.post(url,
+            data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"},
+            files={"photo": ("product.jpg", img_bytes, "image/jpeg")})
+    else:
+        resp = requests.post(url, data={
+            "chat_id": CHAT_ID,
+            "photo": hi_res_url,
+            "caption": caption,
+            "parse_mode": "HTML"
+        })
     return resp.status_code == 200
 
 
 def get_fb_page_token():
     return FB_PAGE_TOKEN
+
+
+def upgrade_image_quality(image_url):
+    """Convert Amazon image URL to high-resolution version"""
+    if not image_url:
+        return image_url
+    if "._" in image_url:
+        base = image_url.split("._")[0]
+        return base + "._SL2000_.jpg"
+    return image_url
+
+
+def download_high_res_image(image_url):
+    """Try multiple resolutions to get the best quality image"""
+    if not image_url:
+        return None
+    base = image_url.split("._")[0] if "._" in image_url else image_url
+    for suffix in ["._SL2000_.jpg", "._SL1500_.jpg", "._SL1000_.jpg", ".jpg"]:
+        try:
+            test_url = base + suffix
+            resp = requests.get(test_url, headers=HEADERS, timeout=10)
+            if resp.status_code == 200 and len(resp.content) > 10000:
+                return resp.content
+        except:
+            continue
+    # Fallback to original URL
+    try:
+        resp = requests.get(image_url, headers=HEADERS, timeout=10)
+        if resp.status_code == 200:
+            return resp.content
+    except:
+        pass
+    return None
 
 
 def post_to_facebook(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller):
@@ -128,16 +175,16 @@ def post_to_facebook(title, price, original_price, discount, image_url, affiliat
         return False, "Could not get page token"
 
     try:
-        # Download image from Amazon
-        img_resp = requests.get(image_url, headers=HEADERS, timeout=10)
-        if img_resp.status_code != 200:
-            return False, f"Image download failed: {img_resp.status_code}"
+        # Download high-res image
+        img_bytes = download_high_res_image(image_url)
+        if not img_bytes:
+            return False, "Image download failed"
 
         # Step 1: Upload photo as unpublished to get photo ID
         photo_resp = requests.post(
             f"https://graph.facebook.com/{FB_PAGE_ID}/photos",
             data={"published": "false", "access_token": page_token},
-            files={"source": ("product.jpg", img_resp.content, "image/jpeg")}
+            files={"source": ("product.jpg", img_bytes, "image/jpeg")}
         )
         photo_data = photo_resp.json()
         photo_id = photo_data.get("id")
@@ -145,12 +192,14 @@ def post_to_facebook(title, price, original_price, discount, image_url, affiliat
         if not photo_id:
             return False, f"Photo upload failed: {photo_resp.text[:150]}"
 
-        # Step 2: Post to page feed with attached photo (shows in main timeline)
+        # Step 2: Post to page feed with attached photo + clickable link card
+        # The 'link' parameter creates a clickable Buy Now-style card preview
         feed_resp = requests.post(
             f"https://graph.facebook.com/{FB_PAGE_ID}/feed",
             data={
                 "message": message,
                 "attached_media": json.dumps([{"media_fbid": photo_id}]),
+                "link": affiliate_link,
                 "access_token": page_token
             }
         )
@@ -181,7 +230,8 @@ def scrape_products():
             affiliate_link = base_link + f"?tag={AFFILIATE_ID}"
 
             if image_url and title:
-                products.append((title, price, affiliate_link, image_url, base_link))
+                hi_res_image = upgrade_image_quality(image_url)
+                products.append((title, price, affiliate_link, hi_res_image, base_link))
         except:
             continue
 
