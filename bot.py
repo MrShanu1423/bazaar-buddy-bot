@@ -9,7 +9,9 @@ CHAT_ID = "-1003706154836"
 AFFILIATE_ID = "dattatrey07-21"
 
 FB_PAGE_ID = "1060781310451431"
-FB_PAGE_TOKEN = "EAANdFOZCViOQBRKZBka51SPXZBNnPqZCccPOuLPXK9kPcud72aWNZBQSYa9aPUG2rlwWDMCpFb4XNZAUmTfFT41QATFFmsFzu8HNaZAlaiom7FH3xDh83oBgZADn2ZB9K1G3Cmoz2xiRoQHB5uY2ZB8J6B1LbX9hXWaxhYTRNjZC85Shj9mCRai0S7Lwhb2U1P1DWg6TIn6"
+FB_PAGE_TOKEN = "EAANdFOZCViOQBRS0F2wtd8AIqaSYsSxFYZBrlRUwwIjxq2uXhZB9QTnZB2nOq9VMzqQ3ZB4PQj5squ0aRqAEZCWpohspKldrF84NhltZCuSB5UZBXd2FYyVhJdqfQ6OLEJJiZBmteNx6ZA6ssVKisiWYkopAtDOzD5mP1TBBpLqjoQdZByCLeTif44btKg6XgUYQ5HBTf8c29bL"
+
+IG_USER_ID = "17841454000638756"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -132,6 +134,69 @@ def get_fb_page_token():
     return FB_PAGE_TOKEN
 
 
+def shorten_url(long_url):
+    """Shorten URL via TinyURL (free, no API key needed). Falls back to original."""
+    try:
+        r = requests.get("https://tinyurl.com/api-create.php", params={"url": long_url}, timeout=8)
+        if r.status_code == 200 and r.text.startswith("http"):
+            return r.text.strip()
+    except:
+        pass
+    return long_url
+
+
+def generate_hashtags(title):
+    """Generate SEO-optimized hashtags from product title + general deal tags."""
+    base_tags = [
+        "#AmazonDeals", "#AmazonIndia", "#LootDeals", "#BestDeals", "#OnlineShopping",
+        "#DiscountDeals", "#OfferZone", "#ShoppingDeals", "#DealsOfTheDay", "#BazaarBuddy",
+        "#SaveMoney", "#IndiaShopping", "#AmazonOffers", "#BudgetBuy", "#SmartShopping"
+    ]
+    # Extract product-specific tags
+    title_lower = title.lower()
+    keyword_map = {
+        "oven": ["#Oven", "#MicrowaveOven", "#KitchenAppliance"],
+        "microwave": ["#Microwave", "#MicrowaveOven", "#KitchenEssentials"],
+        "induction": ["#InductionCooktop", "#InductionStove", "#KitchenAppliance"],
+        "mixer": ["#MixerGrinder", "#KitchenAppliance", "#KitchenEssentials"],
+        "phone": ["#Smartphone", "#MobilePhone", "#Tech"],
+        "mobile": ["#Smartphone", "#MobilePhone", "#Tech"],
+        "laptop": ["#Laptop", "#Computer", "#TechDeals"],
+        "headphone": ["#Headphones", "#Audio", "#TechDeals"],
+        "earbud": ["#Earbuds", "#WirelessEarbuds", "#Audio"],
+        "tv": ["#SmartTV", "#Television", "#HomeEntertainment"],
+        "fan": ["#Fan", "#HomeAppliance", "#SummerEssentials"],
+        "cooler": ["#AirCooler", "#SummerCooling", "#HomeAppliance"],
+        "ac ": ["#AirConditioner", "#AC", "#SummerCooling"],
+        "refrigerator": ["#Refrigerator", "#Fridge", "#HomeAppliance"],
+        "fridge": ["#Refrigerator", "#Fridge", "#HomeAppliance"],
+        "washing machine": ["#WashingMachine", "#HomeAppliance"],
+        "watch": ["#SmartWatch", "#Watch", "#Wearables"],
+        "kitchen": ["#KitchenEssentials", "#KitchenAppliance"],
+        "bottle": ["#WaterBottle", "#Lifestyle"],
+        "shoe": ["#Shoes", "#Footwear", "#Fashion"],
+        "shirt": ["#Fashion", "#Clothing", "#Style"],
+        "book": ["#Books", "#Reading"],
+        "toy": ["#Toys", "#KidsToys"],
+        "speaker": ["#Speaker", "#Audio", "#TechDeals"],
+        "camera": ["#Camera", "#Photography"],
+        "tablet": ["#Tablet", "#Tech"],
+        "fitness": ["#Fitness", "#Health"],
+        "trimmer": ["#Trimmer", "#Grooming"],
+        "shaver": ["#Shaver", "#Grooming"],
+        "iron": ["#Iron", "#HomeAppliance"],
+        "vacuum": ["#VacuumCleaner", "#HomeAppliance"],
+    }
+    extra_tags = []
+    for kw, tags in keyword_map.items():
+        if kw in title_lower:
+            extra_tags.extend(tags)
+            break
+    # Combine and de-duplicate, max 25 tags (Instagram allows 30)
+    all_tags = list(dict.fromkeys(extra_tags + base_tags))[:25]
+    return " ".join(all_tags)
+
+
 def upgrade_image_quality(image_url):
     """Convert Amazon image URL to high-resolution version"""
     if not image_url:
@@ -163,6 +228,75 @@ def download_high_res_image(image_url):
     except:
         pass
     return None
+
+
+def post_to_instagram(title, discount, image_url, affiliate_link, rating, reviews):
+    """Post to Instagram Business Account with hashtags + short link + BUY NOW."""
+    page_token = get_fb_page_token()
+    if not page_token:
+        return False, "No page token"
+
+    # Shorten the affiliate link
+    short_link = shorten_url(affiliate_link)
+
+    # Build SEO-optimized caption
+    hashtags = generate_hashtags(title)
+    lines = []
+    lines.append("🛒 BUY NOW 👉 " + short_link)
+    lines.append("")
+    lines.append("🔥 " + title)
+    if discount:
+        lines.append("")
+        lines.append("💰 " + discount + " OFF — Limited Time Deal! ⚡")
+    if rating or reviews:
+        rev_line = ""
+        if reviews:
+            rev_line += "⭐ " + reviews + " Reviews"
+        if rating:
+            rev_line += ": " + rating + "/5.0"
+        lines.append("")
+        lines.append(rev_line)
+    lines.append("")
+    lines.append("👆 Tap link in caption to grab this deal NOW!")
+    lines.append("")
+    lines.append(hashtags)
+    caption = "\n".join(lines)
+    if len(caption) > 2200:  # Instagram caption limit
+        caption = caption[:2197] + "..."
+
+    # Use a publicly accessible Amazon image URL (Instagram needs URL, not bytes)
+    hi_res_url = upgrade_image_quality(image_url)
+
+    try:
+        # Step 1: Create media container
+        create_resp = requests.post(
+            f"https://graph.facebook.com/v21.0/{IG_USER_ID}/media",
+            data={
+                "image_url": hi_res_url,
+                "caption": caption,
+                "access_token": page_token
+            },
+            timeout=30
+        )
+        if create_resp.status_code != 200:
+            return False, f"IG create failed: {create_resp.text[:150]}"
+
+        creation_id = create_resp.json().get("id")
+        if not creation_id:
+            return False, "No creation ID"
+
+        # Wait briefly for IG to process the image
+        time.sleep(3)
+
+        # Step 2: Publish the media
+        publish_resp = requests.post(
+            f"https://graph.facebook.com/v21.0/{IG_USER_ID}/media_publish",
+            data={"creation_id": creation_id, "access_token": page_token},
+            timeout=30
+        )
+        return publish_resp.status_code == 200, publish_resp.text
+    except Exception as e:
+        return False, str(e)
 
 
 def post_to_facebook(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller):
@@ -234,7 +368,7 @@ def scrape_products():
 
 
 def run_bot():
-    print("🚀 BOT STARTED — Telegram + Facebook | 1 post every 20 minutes")
+    print("🚀 BOT STARTED — Telegram + Facebook + Instagram | 1 post every 20 minutes")
 
     while True:
         try:
@@ -261,6 +395,15 @@ def run_bot():
                     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Facebook: Posted")
                 else:
                     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Facebook: Failed — {fb_resp[:120]}")
+
+                time.sleep(2)
+
+                # Post to Instagram Business Account
+                ig_ok, ig_resp = post_to_instagram(title, discount, image_url, affiliate_link, rating, reviews)
+                if ig_ok:
+                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Instagram: Posted")
+                else:
+                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Instagram: Failed — {ig_resp[:120]}")
 
             else:
                 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ No products scraped")
