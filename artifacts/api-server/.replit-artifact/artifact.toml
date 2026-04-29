@@ -1,5 +1,5 @@
 kind = "api"
-previewPath = "/api"
+previewPath = "/"
 title = "Bazaar Buddy Bot"
 version = "1.0.0"
 id = "3B4_FFSkEVBkAeYMFRJ2e"
@@ -9,8 +9,11 @@ localPort = 8080
 name = "Bazaar Buddy Bot"
 paths = ["/", "/api"]
 
+[services.env]
+PORT = "8080"
+
 [services.development]
-run = "pnpm --filter @workspace/api-server run dev"
+run = "bash -lc 'cd /home/runner/workspace && python app.py'"
 
 [services.production]
 
@@ -18,7 +21,7 @@ run = "pnpm --filter @workspace/api-server run dev"
 args = ["bash", "-lc", "uv pip install --system flask requests beautifulsoup4 || pip install flask requests beautifulsoup4"]
 
 [services.production.run]
-args = ["python", "app.py"]
+args = ["bash", "-lc", "cd /home/runner/workspace && python app.py"]
 
 [services.production.run.env]
 PORT = "8080"
