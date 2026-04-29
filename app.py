@@ -101,6 +101,11 @@ def home():
     return render_template("index.html")
 
 
+@app.route("/api/healthz")
+def healthz():
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/status")
 def api_status():
     state = load_state()
