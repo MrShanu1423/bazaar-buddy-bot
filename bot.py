@@ -60,15 +60,14 @@ def get_product_details(product_url):
 
 
 def build_caption_plain(title, price, original_price, discount, affiliate_link, rating, reviews, seller):
+    """Facebook caption: only affiliate link at top, no prices, only % off."""
     lines = []
     lines.append(f"🛒 BUY NOW 👉 {affiliate_link}")
     lines.append("")
     lines.append(f"🔥 {title}")
-    lines.append("")
-    if original_price and discount:
-        lines.append(f"💰 At only {price} instead of {original_price} ({discount})")
-    else:
-        lines.append(f"💰 At only {price}")
+    if discount:
+        lines.append("")
+        lines.append(f"💰 {discount} OFF — Limited Time Deal!")
     if rating or reviews:
         lines.append("")
         review_line = ""
@@ -79,8 +78,6 @@ def build_caption_plain(title, price, original_price, discount, affiliate_link, 
         lines.append(review_line)
     if seller:
         lines.append(f"🚚 Sold by {seller} and shipped by Amazon")
-    lines.append("")
-    lines.append(f"👉 Order Here: {affiliate_link}")
     return "\n".join(lines)
 
 
@@ -192,14 +189,12 @@ def post_to_facebook(title, price, original_price, discount, image_url, affiliat
         if not photo_id:
             return False, f"Photo upload failed: {photo_resp.text[:150]}"
 
-        # Step 2: Post to page feed with attached photo + clickable link card
-        # The 'link' parameter creates a clickable Buy Now-style card preview
+        # Step 2: Post to page feed with attached photo (only BUY NOW link in message)
         feed_resp = requests.post(
             f"https://graph.facebook.com/{FB_PAGE_ID}/feed",
             data={
                 "message": message,
                 "attached_media": json.dumps([{"media_fbid": photo_id}]),
-                "link": affiliate_link,
                 "access_token": page_token
             }
         )
