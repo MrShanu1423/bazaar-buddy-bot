@@ -323,12 +323,13 @@ def post_to_facebook(title, price, original_price, discount, image_url, affiliat
         if not photo_id:
             return False, f"Photo upload failed: {photo_resp.text[:150]}"
 
-        # Step 2: Post to page feed with attached photo (only BUY NOW link in message)
+        # Step 2: Post to page feed with attached photo + link (image becomes clickable to affiliate)
         feed_resp = requests.post(
             f"https://graph.facebook.com/{FB_PAGE_ID}/feed",
             data={
                 "message": message,
                 "attached_media": json.dumps([{"media_fbid": photo_id}]),
+                "link": affiliate_link,
                 "access_token": page_token
             }
         )
@@ -367,50 +368,49 @@ def scrape_products():
     return products
 
 
-def run_bot():
-    print("🚀 BOT STARTED — Telegram + Facebook + Instagram | 1 post every 20 minutes")
+def post_one_round():
+    """Post a single product to all 3 platforms. Returns dict with results."""
+    result = {
+        "title": "",
+        "telegram": False,
+        "facebook": False,
+        "instagram": False,
+        "error": None,
+        "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+    }
+    try:
+        products = scrape_products()
+        if not products:
+            result["error"] = "No products scraped"
+            return result
 
-    while True:
+        title, price, affiliate_link, image_url, base_link = random.choice(products)
+        result["title"] = title
+        rating, reviews, seller, original_price, discount = get_product_details(base_link)
+
+        # Telegram
         try:
-            products = scrape_products()
-
-            if products:
-                title, price, affiliate_link, image_url, base_link = random.choice(products)
-
-                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Fetching details: {title[:50]}")
-                rating, reviews, seller, original_price, discount = get_product_details(base_link)
-
-                # Post to Telegram
-                tg_ok = send_to_telegram(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller)
-                if tg_ok:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Telegram: Posted")
-                else:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Telegram: Failed")
-
-                time.sleep(2)
-
-                # Post to Facebook Page
-                fb_ok, fb_resp = post_to_facebook(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller)
-                if fb_ok:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Facebook: Posted")
-                else:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Facebook: Failed — {fb_resp[:120]}")
-
-                time.sleep(2)
-
-                # Post to Instagram Business Account
-                ig_ok, ig_resp = post_to_instagram(title, discount, image_url, affiliate_link, rating, reviews)
-                if ig_ok:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Instagram: Posted")
-                else:
-                    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ Instagram: Failed — {ig_resp[:120]}")
-
-            else:
-                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⚠️ No products scraped")
-
+            result["telegram"] = send_to_telegram(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller)
         except Exception as e:
-            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ❌ Error: {e}")
+            result["telegram"] = False
 
-        time.sleep(1200)  # 1 post every 20 minutes
+        time.sleep(2)
+        # Facebook
+        try:
+            fb_ok, _ = post_to_facebook(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller)
+            result["facebook"] = fb_ok
+        except Exception as e:
+            result["facebook"] = False
 
-run_bot()
+        time.sleep(2)
+        # Instagram
+        try:
+            ig_ok, _ = post_to_instagram(title, discount, image_url, affiliate_link, rating, reviews)
+            result["instagram"] = ig_ok
+        except Exception as e:
+            result["instagram"] = False
+
+    except Exception as e:
+        result["error"] = str(e)
+
+    return result

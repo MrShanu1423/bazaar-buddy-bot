@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bazaar Buddy — Auto Post Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  min-height: 100vh;
+  color: #fff;
+  padding: 20px;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+.header { text-align: center; padding: 30px 0; }
+.header h1 {
+  font-size: 38px; font-weight: 800; margin-bottom: 8px;
+  background: linear-gradient(90deg, #f093fb, #f5576c, #ffd200);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header p { color: #c0bfd8; font-size: 15px; }
+
+.toggle-card {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  margin-bottom: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 20px;
+  letter-spacing: 0.5px;
+}
+.status-badge.on { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); }
+.status-badge.off { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 130px;
+  height: 70px;
+  margin: 16px 0;
+  cursor: pointer;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #4a4a6a 0%, #3a3a5a 100%);
+  border-radius: 70px;
+  transition: 0.4s;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+}
+.slider:before {
+  position: absolute; content: "";
+  height: 56px; width: 56px;
+  left: 7px; top: 7px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.4s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+input:checked + .slider {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  box-shadow: 0 0 30px rgba(56,239,125,0.5), inset 0 2px 8px rgba(0,0,0,0.2);
+}
+input:checked + .slider:before { transform: translateX(60px); }
+
+.toggle-label {
+  display: block;
+  margin-top: 16px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.toggle-help {
+  display: block;
+  color: #a8a7c4;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.btn-row { display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+  font-family: inherit;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,0.4); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.platforms-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.platform-card {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 22px;
+  text-align: center;
+}
+.platform-icon { font-size: 32px; margin-bottom: 8px; }
+.platform-name { font-size: 13px; color: #a8a7c4; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
+.platform-count { font-size: 32px; font-weight: 800; margin-top: 6px; }
+.platform-card.tg .platform-count { color: #4ea4ff; }
+.platform-card.fb .platform-count { color: #5d8aff; }
+.platform-card.ig .platform-count { color: #f5576c; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.info-card {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 18px 22px;
+}
+.info-label { font-size: 12px; color: #a8a7c4; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; margin-bottom: 6px; }
+.info-value { font-size: 18px; font-weight: 600; word-break: break-word; }
+
+.history-card {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.history-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.history-empty { color: #a8a7c4; padding: 20px; text-align: center; }
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.history-item:last-child { border-bottom: none; }
+.history-time { font-size: 12px; color: #a8a7c4; min-width: 130px; }
+.history-product { flex: 1; font-size: 13px; color: #d8d7ee; }
+.platform-pills { display: flex; gap: 6px; }
+.pill {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.pill.ok { background: rgba(34,197,94,0.2); color: #4ade80; }
+.pill.fail { background: rgba(239,68,68,0.2); color: #f87171; }
+
+.note {
+  background: rgba(255,200,100,0.08);
+  border: 1px solid rgba(255,200,100,0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #ffd58e;
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .platforms-row { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
+  .header h1 { font-size: 28px; }
+  .history-item { flex-wrap: wrap; }
+  .history-time { min-width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>🛒 Bazaar Buddy Loot Deals</h1>
+    <p>Auto-Post Control Panel — Telegram • Facebook • Instagram</p>
+  </div>
+
+  <div class="toggle-card">
+    <div id="status-badge" class="status-badge off">⭕ AUTO-POSTING IS OFF</div>
+    <div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <span class="toggle-label" id="toggle-label">Turn ON to start auto-posting</span>
+    <span class="toggle-help">Posts 1 deal every 20 minutes to all 3 platforms</span>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="post-now-btn" onclick="postNow()">⚡ Post One Deal Now</button>
+    </div>
+  </div>
+
+  <div class="platforms-row">
+    <div class="platform-card tg">
+      <div class="platform-icon">📱</div>
+      <div class="platform-name">Telegram</div>
+      <div class="platform-count" id="tg-count">0</div>
+    </div>
+    <div class="platform-card fb">
+      <div class="platform-icon">📘</div>
+      <div class="platform-name">Facebook</div>
+      <div class="platform-count" id="fb-count">0</div>
+    </div>
+    <div class="platform-card ig">
+      <div class="platform-icon">📸</div>
+      <div class="platform-name">Instagram</div>
+      <div class="platform-count" id="ig-count">0</div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-label">Last Post</div>
+      <div class="info-value" id="last-post">—</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Next Post At</div>
+      <div class="info-value" id="next-post">—</div>
+    </div>
+  </div>
+
+  <div class="history-card">
+    <div class="history-title">📜 Recent Posts</div>
+    <div id="history-list">
+      <div class="history-empty">No posts yet. Turn ON the toggle to start.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    💡 <strong>Tip:</strong> Once you publish (deploy) this app, the toggle stays ON 24/7 — even if you close your laptop or shut down your computer. Your bot will keep posting deals automatically every 20 minutes!
+  </div>
+
+</div>
+
+<script>
+async function fetchStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const s = await r.json();
+    renderState(s);
+  } catch(e) { console.error(e); }
+}
+
+function renderState(s) {
+  const badge = document.getElementById('status-badge');
+  const toggle = document.getElementById('toggle');
+  const label = document.getElementById('toggle-label');
+
+  toggle.checked = !!s.enabled;
+  if (s.enabled) {
+    badge.className = 'status-badge on';
+    badge.textContent = '🟢 AUTO-POSTING IS ON';
+    label.textContent = 'Auto-posting active!';
+  } else {
+    badge.className = 'status-badge off';
+    badge.textContent = '⭕ AUTO-POSTING IS OFF';
+    label.textContent = 'Turn ON to start auto-posting';
+  }
+
+  const stats = s.stats || {};
+  document.getElementById('tg-count').textContent = stats.telegram || 0;
+  document.getElementById('fb-count').textContent = stats.facebook || 0;
+  document.getElementById('ig-count').textContent = stats.instagram || 0;
+
+  document.getElementById('last-post').textContent = s.last_post || '—';
+  document.getElementById('next-post').textContent = s.enabled && s.next_post_at ? s.next_post_at : '—';
+
+  const list = document.getElementById('history-list');
+  const hist = s.history || [];
+  if (hist.length === 0) {
+    list.innerHTML = '<div class="history-empty">No posts yet. Turn ON the toggle to start.</div>';
+  } else {
+    list.innerHTML = hist.map(h => `
+      <div class="history-item">
+        <div class="history-time">${h.time}</div>
+        <div class="history-product">${escapeHtml(h.title)}</div>
+        <div class="platform-pills">
+          <span class="pill ${h.telegram ? 'ok' : 'fail'}">TG ${h.telegram ? '✓' : '✗'}</span>
+          <span class="pill ${h.facebook ? 'ok' : 'fail'}">FB ${h.facebook ? '✓' : '✗'}</span>
+          <span class="pill ${h.instagram ? 'ok' : 'fail'}">IG ${h.instagram ? '✓' : '✗'}</span>
+        </div>
+      </div>`).join('');
+  }
+}
+
+function escapeHtml(t) {
+  const d = document.createElement('div');
+  d.textContent = t || '';
+  return d.innerHTML;
+}
+
+document.getElementById('toggle').addEventListener('change', async function() {
+  try {
+    const r = await fetch('/api/toggle', { method: 'POST' });
+    const s = await r.json();
+    renderState(s);
+  } catch(e) { alert('Error toggling: ' + e); }
+});
+
+async function postNow() {
+  const btn = document.getElementById('post-now-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Posting... (takes 30-60 sec)';
+  try {
+    await fetch('/api/post-now', { method: 'POST' });
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = '⚡ Post One Deal Now';
+      fetchStatus();
+    }, 60000);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '⚡ Post One Deal Now';
+    alert('Error: ' + e);
+  }
+}
+
+fetchStatus();
+setInterval(fetchStatus, 5000);
+</script>
+</body>
+</html>

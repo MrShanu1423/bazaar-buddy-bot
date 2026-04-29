@@ -1,8 +1,44 @@
-# Workspace
+# Bazaar Buddy Loot Deals — Auto-Posting Bot
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+A Python bot + Flask web app that scrapes Amazon India bestsellers and auto-posts deals every 20 minutes to Telegram, Facebook, and Instagram. Includes a web UI with an ON/OFF toggle for control.
+
+## Main Files
+
+- **`bot.py`** — Core posting logic (scraping, Telegram, Facebook, Instagram functions). Exposes `post_one_round()` which posts one product to all 3 platforms.
+- **`app.py`** — Flask web app with toggle UI. Background thread reads toggle state every loop and calls `post_one_round()` every 20 minutes when toggle is ON.
+- **`templates/index.html`** — Toggle dashboard UI (status badge, on/off switch, post-now button, platform stats, recent post history).
+- **`bot_state.json`** — Persisted state file (toggle on/off, post stats, last post info, history). Auto-created.
+
+## Workflow
+
+- **Telegram Bot** — runs `python app.py` on port 5000. Serves the web UI and runs the background posting loop.
+
+## Deployment
+
+- **Target:** Reserved VM (always-on) so posting continues 24/7 even when user's laptop is off.
+- **Run command:** `python app.py`
+- **Port:** Auto-detects `$PORT` env var (defaults to 5000 in dev).
+
+## Credentials (in bot.py)
+
+- `BOT_TOKEN` — Telegram bot token
+- `CHAT_ID` — Telegram channel ID
+- `AFFILIATE_ID` — Amazon affiliate tag (`dattatrey07-21`)
+- `FB_PAGE_ID` — Facebook page ID (`1060781310451431`)
+- `FB_PAGE_TOKEN` — Permanent Facebook page token (with IG permissions)
+- `IG_USER_ID` — Instagram Business Account ID (`17841454000638756`, @bazaarbuddylootdeals)
+
+## Posting Format
+
+- **Telegram:** High-res image upload, HTML caption with clickable BUY NOW + Order Here links, ratings, prices.
+- **Facebook:** High-res image upload, caption with affiliate link, `link` parameter so image card is clickable to affiliate URL.
+- **Instagram:** High-res image, SEO-optimized hashtags (25 tags via category detection), TinyURL short link, BUY NOW prominent at top of caption.
+
+## Original Workspace (template — unused by bot)
+
+The repository was bootstrapped as a pnpm/TypeScript monorepo with `artifacts/api-server` and `artifacts/mockup-sandbox` packages. These are not used by the bot but remain in the codebase.
 
 ## Stack
 
