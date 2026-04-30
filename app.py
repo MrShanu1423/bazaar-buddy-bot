@@ -25,7 +25,7 @@ def load_state():
         except:
             pass
     return {
-        "enabled": False,
+        "enabled": True,
         "last_post": None,
         "last_result": None,
         "next_post_at": None,
