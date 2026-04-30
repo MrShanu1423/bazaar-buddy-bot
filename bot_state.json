@@ -1,22 +1,29 @@
 {
   "enabled": true,
-  "last_post": "2026-04-30 12:50:38",
+  "last_post": "2026-04-30 16:54:15",
   "last_result": {
-    "title": "FEDUS Cat6 Ethernet Cable, 10M High Speed 550MHZ / 10 Gigabit Speed UTP LAN Cable, Network Cable Internet Cable RJ45 Cable LA",
+    "title": "Amazon Brand - Presto! Garbage Bags | Medium | 180 Count | 30 Bags X 6 Rolls | 19 X 21 Inches | For Dry & Wet Waste | Black",
     "telegram": true,
     "facebook": true,
     "instagram": true,
     "error": null,
-    "timestamp": "2026-04-30 12:50:38"
+    "timestamp": "2026-04-30 16:54:15"
   },
-  "next_post_at": "2026-04-30 13:11:18",
+  "next_post_at": "2026-04-30 17:14:51",
   "stats": {
-    "telegram": 25,
-    "facebook": 25,
-    "instagram": 25,
-    "total_rounds": 26
+    "telegram": 26,
+    "facebook": 26,
+    "instagram": 26,
+    "total_rounds": 27
   },
   "history": [
+    {
+      "time": "2026-04-30 16:54:15",
+      "title": "Amazon Brand - Presto! Garbage Bags | Medium | 180 Count | 30 Bags X 6 Rolls | 1",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
     {
       "time": "2026-04-30 12:50:38",
       "title": "FEDUS Cat6 Ethernet Cable, 10M High Speed 550MHZ / 10 Gigabit Speed UTP LAN Cabl",
@@ -146,13 +153,6 @@
     {
       "time": "2026-04-30 06:41:54",
       "title": "Ezee Live Life Ezee Way Black Garbage Bags for Dustbin|90 Pcs|Medium 19 X 21 Inc",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 06:21:21",
-      "title": "Boat Bassheads 300C Wired Earphones,Type-C Jack, 10mm Drivers, Signature Sound, ",
       "telegram": true,
       "facebook": true,
       "instagram": true
