@@ -1,0 +1,28 @@
+name: Post Deals (Auto 24/7)
+
+on:
+  schedule:
+    # Runs every 20 minutes, 24/7
+    - cron: '*/20 * * * *'
+  workflow_dispatch:  # Manual trigger button on GitHub UI
+
+jobs:
+  post-deal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Post one deal to all platforms
+        run: |
+          python -c "import bot; r = bot.post_one_round(); print('TG:', r['telegram'], 'FB:', r['facebook'], 'IG:', r['instagram'], '|', r['title'][:80])"
