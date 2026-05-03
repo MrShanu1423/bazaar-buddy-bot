@@ -18,11 +18,46 @@ HEADERS = {
 }
 
 CATEGORIES = [
+    # Electronics & Tech
     "https://www.amazon.in/gp/bestsellers/electronics/",
     "https://www.amazon.in/gp/bestsellers/computers/",
-    "https://www.amazon.in/gp/bestsellers/hpc/",
+    # Kitchen & Home
     "https://www.amazon.in/gp/bestsellers/kitchen/",
-    "https://www.amazon.in/gp/bestsellers/kitchen/1380367031/",
+    "https://www.amazon.in/gp/bestsellers/home/",
+    # Women's Fashion & Clothing
+    "https://www.amazon.in/gp/bestsellers/apparel/1968024031/",
+    "https://www.amazon.in/gp/bestsellers/apparel/1968051031/",
+    # Men's Clothing & Fashion
+    "https://www.amazon.in/gp/bestsellers/apparel/1968116031/",
+    "https://www.amazon.in/gp/bestsellers/apparel/1968249031/",
+    # Beauty & Cosmetics
+    "https://www.amazon.in/gp/bestsellers/beauty/",
+    "https://www.amazon.in/gp/bestsellers/beauty/2454168031/",
+    "https://www.amazon.in/gp/bestsellers/beauty/2454169031/",
+    # Health & Personal Care
+    "https://www.amazon.in/gp/bestsellers/hpc/",
+    "https://www.amazon.in/gp/bestsellers/hpc/4953617031/",
+    # Shoes & Footwear
+    "https://www.amazon.in/gp/bestsellers/shoes/",
+    # Watches
+    "https://www.amazon.in/gp/bestsellers/watches/",
+    # Bags & Luggage
+    "https://www.amazon.in/gp/bestsellers/luggage/",
+    # Sports & Fitness
+    "https://www.amazon.in/gp/bestsellers/sports/",
+    # Toys & Baby
+    "https://www.amazon.in/gp/bestsellers/toys/",
+    "https://www.amazon.in/gp/bestsellers/baby/",
+    # Books
+    "https://www.amazon.in/gp/bestsellers/books/",
+    # Grocery & Food
+    "https://www.amazon.in/gp/bestsellers/grocery/",
+    # Automotive
+    "https://www.amazon.in/gp/bestsellers/automotive/",
+    # Pet Supplies
+    "https://www.amazon.in/gp/bestsellers/pet-supplies/",
+    # Office & Stationery
+    "https://www.amazon.in/gp/bestsellers/office-products/",
 ]
 
 
@@ -152,47 +187,149 @@ def generate_hashtags(title):
         "#DiscountDeals", "#OfferZone", "#ShoppingDeals", "#DealsOfTheDay", "#BazaarBuddy",
         "#SaveMoney", "#IndiaShopping", "#AmazonOffers", "#BudgetBuy", "#SmartShopping"
     ]
-    # Extract product-specific tags
     title_lower = title.lower()
     keyword_map = {
+        # Electronics & Tech
         "oven": ["#Oven", "#MicrowaveOven", "#KitchenAppliance"],
         "microwave": ["#Microwave", "#MicrowaveOven", "#KitchenEssentials"],
         "induction": ["#InductionCooktop", "#InductionStove", "#KitchenAppliance"],
         "mixer": ["#MixerGrinder", "#KitchenAppliance", "#KitchenEssentials"],
-        "phone": ["#Smartphone", "#MobilePhone", "#Tech"],
-        "mobile": ["#Smartphone", "#MobilePhone", "#Tech"],
-        "laptop": ["#Laptop", "#Computer", "#TechDeals"],
-        "headphone": ["#Headphones", "#Audio", "#TechDeals"],
-        "earbud": ["#Earbuds", "#WirelessEarbuds", "#Audio"],
-        "tv": ["#SmartTV", "#Television", "#HomeEntertainment"],
+        "phone": ["#Smartphone", "#MobilePhone", "#Tech", "#TechDeals"],
+        "mobile": ["#Smartphone", "#MobilePhone", "#Tech", "#TechDeals"],
+        "laptop": ["#Laptop", "#Computer", "#TechDeals", "#Tech"],
+        "headphone": ["#Headphones", "#Audio", "#TechDeals", "#Music"],
+        "earbud": ["#Earbuds", "#WirelessEarbuds", "#Audio", "#TechDeals"],
+        "tv": ["#SmartTV", "#Television", "#HomeEntertainment", "#TV"],
         "fan": ["#Fan", "#HomeAppliance", "#SummerEssentials"],
         "cooler": ["#AirCooler", "#SummerCooling", "#HomeAppliance"],
         "ac ": ["#AirConditioner", "#AC", "#SummerCooling"],
         "refrigerator": ["#Refrigerator", "#Fridge", "#HomeAppliance"],
         "fridge": ["#Refrigerator", "#Fridge", "#HomeAppliance"],
         "washing machine": ["#WashingMachine", "#HomeAppliance"],
-        "watch": ["#SmartWatch", "#Watch", "#Wearables"],
-        "kitchen": ["#KitchenEssentials", "#KitchenAppliance"],
-        "bottle": ["#WaterBottle", "#Lifestyle"],
-        "shoe": ["#Shoes", "#Footwear", "#Fashion"],
-        "shirt": ["#Fashion", "#Clothing", "#Style"],
-        "book": ["#Books", "#Reading"],
-        "toy": ["#Toys", "#KidsToys"],
-        "speaker": ["#Speaker", "#Audio", "#TechDeals"],
-        "camera": ["#Camera", "#Photography"],
-        "tablet": ["#Tablet", "#Tech"],
-        "fitness": ["#Fitness", "#Health"],
-        "trimmer": ["#Trimmer", "#Grooming"],
-        "shaver": ["#Shaver", "#Grooming"],
-        "iron": ["#Iron", "#HomeAppliance"],
-        "vacuum": ["#VacuumCleaner", "#HomeAppliance"],
+        "watch": ["#Watch", "#Watches", "#Wearables", "#Fashion"],
+        "kitchen": ["#KitchenEssentials", "#KitchenAppliance", "#HomeKitchen"],
+        "speaker": ["#Speaker", "#Audio", "#TechDeals", "#Music"],
+        "camera": ["#Camera", "#Photography", "#Tech"],
+        "tablet": ["#Tablet", "#Tech", "#TechDeals"],
+        "vacuum": ["#VacuumCleaner", "#HomeAppliance", "#Cleaning"],
+        # Women's Fashion & Clothing
+        "women": ["#WomensFashion", "#WomensWear", "#WomensClothing", "#Fashion", "#OOTD"],
+        "saree": ["#Saree", "#IndianWear", "#WomensFashion", "#EthnicWear", "#TraditionalWear"],
+        "kurti": ["#Kurti", "#IndianWear", "#WomensFashion", "#EthnicWear"],
+        "lehenga": ["#Lehenga", "#BridalWear", "#IndianFashion", "#EthnicWear"],
+        "dupatta": ["#Dupatta", "#IndianWear", "#WomensFashion", "#EthnicWear"],
+        "salwar": ["#SalwarSuit", "#EthnicWear", "#WomensFashion", "#IndianWear"],
+        "dress": ["#Dress", "#WomensFashion", "#OOTD", "#WomensWear"],
+        "top": ["#WomensTop", "#WomensFashion", "#CasualWear", "#OOTD"],
+        "blouse": ["#Blouse", "#WomensFashion", "#IndianWear"],
+        "legging": ["#Leggings", "#WomensWear", "#Athleisure"],
+        "ethnic": ["#EthnicWear", "#IndianFashion", "#WomensFashion", "#Festive"],
+        # Men's Fashion & Clothing
+        "shirt": ["#MensFashion", "#MensWear", "#MensShirt", "#Style", "#OOTD"],
+        "t-shirt": ["#Tshirt", "#MensFashion", "#CasualWear", "#MensWear"],
+        "trouser": ["#Trousers", "#MensFashion", "#MensWear", "#Style"],
+        "jeans": ["#Jeans", "#MensFashion", "#Denim", "#CasualWear"],
+        "kurta": ["#Kurta", "#MensFashion", "#EthnicWear", "#IndianWear"],
+        "suit": ["#Suit", "#MensFashion", "#FormalWear", "#MensWear"],
+        "jacket": ["#Jacket", "#MensFashion", "#WinterWear", "#Style"],
+        "hoodie": ["#Hoodie", "#CasualWear", "#MensFashion", "#Streetwear"],
+        # Beauty & Cosmetics
+        "lipstick": ["#Lipstick", "#Makeup", "#Beauty", "#BeautyDeals", "#Cosmetics"],
+        "foundation": ["#Foundation", "#Makeup", "#Beauty", "#BeautyDeals"],
+        "mascara": ["#Mascara", "#Makeup", "#Beauty", "#BeautyDeals"],
+        "eyeliner": ["#Eyeliner", "#Makeup", "#Beauty", "#EyeMakeup"],
+        "blush": ["#Blush", "#Makeup", "#Beauty", "#Cosmetics"],
+        "kajal": ["#Kajal", "#Makeup", "#Beauty", "#EyeMakeup", "#IndianBeauty"],
+        "compact": ["#Compact", "#Makeup", "#Beauty", "#Cosmetics"],
+        "primer": ["#Primer", "#Makeup", "#Beauty", "#Skincare"],
+        "concealer": ["#Concealer", "#Makeup", "#Beauty", "#Cosmetics"],
+        "palette": ["#MakeuPalette", "#Makeup", "#Beauty", "#Cosmetics"],
+        "nail": ["#NailPolish", "#NailArt", "#Beauty", "#Cosmetics"],
+        "perfume": ["#Perfume", "#Fragrance", "#Beauty", "#Luxury"],
+        "deodorant": ["#Deodorant", "#PersonalCare", "#Health", "#Grooming"],
+        # Skincare
+        "moisturizer": ["#Moisturizer", "#Skincare", "#Beauty", "#GlowingSkin"],
+        "sunscreen": ["#Sunscreen", "#Skincare", "#SPF", "#SkinProtection"],
+        "serum": ["#Serum", "#Skincare", "#AntiAging", "#GlowingSkin"],
+        "face wash": ["#FaceWash", "#Skincare", "#Beauty", "#SkinCare"],
+        "toner": ["#Toner", "#Skincare", "#Beauty", "#GlowingSkin"],
+        "face mask": ["#FaceMask", "#Skincare", "#Beauty", "#SelfCare"],
+        "cream": ["#Cream", "#Skincare", "#Beauty", "#SkinCare"],
+        "scrub": ["#Scrub", "#Skincare", "#Beauty", "#SelfCare"],
+        "cleanser": ["#Cleanser", "#Skincare", "#Beauty", "#SkinCare"],
+        "sheet mask": ["#SheetMask", "#Skincare", "#Beauty", "#KoreanBeauty"],
+        # Hair Care
+        "shampoo": ["#Shampoo", "#HairCare", "#Beauty", "#HairGoals"],
+        "conditioner": ["#Conditioner", "#HairCare", "#Beauty", "#HairGoals"],
+        "hair oil": ["#HairOil", "#HairCare", "#Beauty", "#HairGrowth"],
+        "hair serum": ["#HairSerum", "#HairCare", "#Beauty", "#HairGoals"],
+        "hair color": ["#HairColor", "#HairDye", "#Beauty", "#HairGoals"],
+        # Health & Wellness
+        "protein": ["#Protein", "#ProteinSupplement", "#Fitness", "#Health", "#Gym"],
+        "vitamin": ["#Vitamins", "#HealthSupplements", "#Health", "#Wellness"],
+        "supplement": ["#Supplements", "#Health", "#Fitness", "#Wellness"],
+        "omega": ["#Omega3", "#Health", "#Supplements", "#Wellness"],
+        "ayurvedic": ["#Ayurvedic", "#NaturalHealth", "#Health", "#Wellness", "#Ayurveda"],
+        "medicine": ["#Medicine", "#Health", "#Wellness"],
+        "sanitizer": ["#Sanitizer", "#Hygiene", "#Health"],
+        # Fitness
+        "fitness": ["#Fitness", "#Health", "#Gym", "#Workout", "#FitIndia"],
+        "yoga": ["#Yoga", "#Fitness", "#Health", "#Wellness", "#YogaLife"],
+        "dumbbell": ["#Dumbbell", "#Gym", "#Fitness", "#Workout"],
+        "resistance": ["#ResistanceBand", "#Fitness", "#HomeWorkout", "#Gym"],
+        "treadmill": ["#Treadmill", "#Fitness", "#HomeGym", "#Workout"],
+        # Shoes & Footwear
+        "shoe": ["#Shoes", "#Footwear", "#Fashion", "#Style"],
+        "sandal": ["#Sandals", "#Footwear", "#WomensFashion", "#Summer"],
+        "slipper": ["#Slippers", "#Footwear", "#Casual", "#Comfort"],
+        "sneaker": ["#Sneakers", "#Footwear", "#Fashion", "#Style"],
+        "heel": ["#Heels", "#WomensFashion", "#Footwear", "#Style"],
+        "boot": ["#Boots", "#Footwear", "#Fashion", "#Style"],
+        # Bags & Accessories
+        "bag": ["#Bags", "#Fashion", "#Handbags", "#Style"],
+        "handbag": ["#Handbag", "#WomensFashion", "#Bags", "#Style"],
+        "backpack": ["#Backpack", "#Bags", "#Travel", "#Style"],
+        "wallet": ["#Wallet", "#Accessories", "#Fashion", "#MensFashion"],
+        "luggage": ["#Luggage", "#Travel", "#Bags", "#TravelEssentials"],
+        # Kids & Baby
+        "toy": ["#Toys", "#KidsToys", "#Baby", "#Kids"],
+        "baby": ["#Baby", "#BabyProducts", "#NewMom", "#Parenting"],
+        "diaper": ["#Diapers", "#Baby", "#BabyEssentials", "#Parenting"],
+        # Books
+        "book": ["#Books", "#Reading", "#Bookstagram", "#BookLovers"],
+        # Sports
+        "cricket": ["#Cricket", "#Sports", "#CricketIndia", "#Fitness"],
+        "badminton": ["#Badminton", "#Sports", "#Fitness"],
+        "football": ["#Football", "#Sports", "#Fitness"],
+        # Grooming
+        "trimmer": ["#Trimmer", "#Grooming", "#MensGrooming", "#Style"],
+        "shaver": ["#Shaver", "#Grooming", "#MensGrooming", "#Style"],
+        "razor": ["#Razor", "#Grooming", "#PersonalCare"],
+        # Home
+        "bottle": ["#WaterBottle", "#Lifestyle", "#HomeEssentials"],
+        "iron": ["#Iron", "#HomeAppliance", "#Laundry"],
+        "pillow": ["#Pillow", "#HomeDecor", "#Bedding", "#ComfortHome"],
+        "bedsheet": ["#Bedsheet", "#HomeDecor", "#Bedding", "#HomeEssentials"],
+        "curtain": ["#Curtains", "#HomeDecor", "#InteriorDesign"],
+        # Grocery & Food
+        "coffee": ["#Coffee", "#CoffeeLover", "#Grocery", "#MorningVibes"],
+        "tea": ["#Tea", "#ChaiLover", "#Grocery", "#IndiaVibes"],
+        "chocolate": ["#Chocolate", "#Snacks", "#Grocery", "#Foodie"],
+        "snack": ["#Snacks", "#Grocery", "#Foodie", "#MunchTime"],
+        "protein bar": ["#ProteinBar", "#Fitness", "#Health", "#Snacks"],
+        # Automotive
+        "car": ["#CarAccessories", "#Automotive", "#CarCare", "#Driving"],
+        "helmet": ["#Helmet", "#Safety", "#Bike", "#Automotive"],
+        # Pet
+        "pet": ["#PetLovers", "#PetCare", "#DogLovers", "#CatLovers"],
+        "dog": ["#DogLovers", "#PetCare", "#Dogs", "#DogLife"],
+        "cat": ["#CatLovers", "#PetCare", "#Cats", "#CatLife"],
     }
     extra_tags = []
     for kw, tags in keyword_map.items():
         if kw in title_lower:
             extra_tags.extend(tags)
-            break
-    # Combine and de-duplicate, max 25 tags (Instagram allows 30)
+    # Combine and de-duplicate, max 25 tags
     all_tags = list(dict.fromkeys(extra_tags + base_tags))[:25]
     return " ".join(all_tags)
 
