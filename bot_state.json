@@ -1,22 +1,29 @@
 {
   "enabled": true,
-  "last_post": "2026-04-30 18:16:23",
+  "last_post": "2026-05-03 05:03:00",
   "last_result": {
-    "title": "Tide Plus Detergent Washing Powder - 10kg Mega Saver Pack | Jasmine & Rose Fragrance | Removes deep-seated Oil, Gravy, Tea St",
+    "title": "amazon basics Vacuum Compression Storage Bags with Hand Pump - Medium, 5-Pack",
     "telegram": true,
     "facebook": true,
     "instagram": true,
     "error": null,
-    "timestamp": "2026-04-30 18:16:23"
+    "timestamp": "2026-05-03 05:03:00"
   },
-  "next_post_at": "2026-04-30 18:36:58",
+  "next_post_at": "2026-05-03 05:23:31",
   "stats": {
-    "telegram": 30,
-    "facebook": 30,
-    "instagram": 30,
-    "total_rounds": 31
+    "telegram": 31,
+    "facebook": 31,
+    "instagram": 31,
+    "total_rounds": 32
   },
   "history": [
+    {
+      "time": "2026-05-03 05:03:00",
+      "title": "amazon basics Vacuum Compression Storage Bags with Hand Pump - Medium, 5-Pack",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
     {
       "time": "2026-04-30 18:16:23",
       "title": "Tide Plus Detergent Washing Powder - 10kg Mega Saver Pack | Jasmine & Rose Fragr",
@@ -146,13 +153,6 @@
     {
       "time": "2026-04-30 08:24:20",
       "title": "APFEN\u00ae 27W Type C to Lightning Fast Charging Cable With High-Speed Data Transfer",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 08:03:55",
-      "title": "Ambrane Unbreakable 3A Fast Charging 1.5m Braided Type C Cable for Smartphones, ",
       "telegram": true,
       "facebook": true,
       "instagram": true
