@@ -1,0 +1,33 @@
+name: Daily Reel Post (1 Video/Day)
+
+on:
+  schedule:
+    # 10:00 AM IST daily (IST = UTC+5:30, so 04:30 UTC)
+    - cron: '30 4 * * *'
+  workflow_dispatch:  # Manual trigger button on GitHub UI
+
+jobs:
+  post-reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies (ffmpeg + fonts)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-liberation fonts-dejavu-core
+
+      - name: Install Python dependencies
+        run: |
+          pip install requests beautifulsoup4 Pillow
+
+      - name: Post daily reel to all platforms
+        run: |
+          python reel_bot.py

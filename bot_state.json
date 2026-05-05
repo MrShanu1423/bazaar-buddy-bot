@@ -1,22 +1,127 @@
 {
   "enabled": true,
-  "last_post": "2026-05-03 05:03:00",
+  "last_post": "2026-05-03 10:08:42",
   "last_result": {
-    "title": "amazon basics Vacuum Compression Storage Bags with Hand Pump - Medium, 5-Pack",
-    "telegram": true,
-    "facebook": true,
-    "instagram": true,
-    "error": null,
-    "timestamp": "2026-05-03 05:03:00"
+    "title": "",
+    "telegram": false,
+    "facebook": false,
+    "instagram": false,
+    "error": "No products scraped",
+    "timestamp": "2026-05-03 10:08:42"
   },
-  "next_post_at": "2026-05-03 05:23:31",
+  "next_post_at": "2026-05-03 10:28:42",
   "stats": {
-    "telegram": 31,
-    "facebook": 31,
-    "instagram": 31,
-    "total_rounds": 32
+    "telegram": 41,
+    "facebook": 41,
+    "instagram": 41,
+    "total_rounds": 47
   },
   "history": [
+    {
+      "time": "2026-05-03 10:08:42",
+      "title": "",
+      "telegram": false,
+      "facebook": false,
+      "instagram": false
+    },
+    {
+      "time": "2026-05-03 09:48:11",
+      "title": "Aristocrat Large Polypropylene Airpro Spinner Check-in 75 Cm() 8 Wheels Trolley ",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 09:27:38",
+      "title": "Amazon Basics Unisex Faux Leather Watch Organiser Box with 6 Slots |Watch Organi",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 09:07:10",
+      "title": "WildHorn Olive Leather Men's Wallet (WH2050) (Brown)",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 08:46:41",
+      "title": "NCERT CLASS 9 Exploration, Textbook of Science (English Med) for Grade 9 906 (20",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 08:26:10",
+      "title": "Vega Crux Dual Visor Flip Up Motorcycle Helmet with Lightweight Shell, Flip-Up C",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 08:05:45",
+      "title": "Amazon Brand - Presto! Garbage Bags | Large | 90 Count | 15 Bags X 6 Rolls | 24 ",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 07:45:45",
+      "title": "",
+      "telegram": false,
+      "facebook": false,
+      "instagram": false
+    },
+    {
+      "time": "2026-05-03 07:25:44",
+      "title": "",
+      "telegram": false,
+      "facebook": false,
+      "instagram": false
+    },
+    {
+      "time": "2026-05-03 07:05:15",
+      "title": "Tagas Men's Textured Zig-Zag Knit White Sweater|Sweatshirt for Mans|Mans Winter ",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 06:45:14",
+      "title": "",
+      "telegram": false,
+      "facebook": false,
+      "instagram": false
+    },
+    {
+      "time": "2026-05-03 06:24:39",
+      "title": "Lifelong LLKS03 Foldable Kick Skating Cycle| Skate Scooter for Kids(Max User Wei",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 06:04:09",
+      "title": "popsugar Off Roader Rechargeable Remote Control Car | RC Car Monster Truck | 4 H",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 05:43:32",
+      "title": "Purepet Adult Dry Cat Food 1kg | Tuna & Salmon Flavour | Hairball Protection | H",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-03 05:23:31",
+      "title": "",
+      "telegram": false,
+      "facebook": false,
+      "instagram": false
+    },
     {
       "time": "2026-05-03 05:03:00",
       "title": "amazon basics Vacuum Compression Storage Bags with Hand Pump - Medium, 5-Pack",
@@ -48,111 +153,6 @@
     {
       "time": "2026-04-30 17:14:51",
       "title": "Bajaj Pygmy Mini Fan 110MM | USB Charging | Multi-Clip Function | Rechargeable |",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 16:54:15",
-      "title": "Amazon Brand - Presto! Garbage Bags | Medium | 180 Count | 30 Bags X 6 Rolls | 1",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 12:50:38",
-      "title": "FEDUS Cat6 Ethernet Cable, 10M High Speed 550MHZ / 10 Gigabit Speed UTP LAN Cabl",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 12:30:03",
-      "title": "Samsung Original 25W USB Type-C Travel Adaptor Without Cable for Google Pixel, X",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 12:09:32",
-      "title": "Smart Multipurpose Foldable Laptop Table with Cup Holder, Study Table, Bed Table",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 11:49:05",
-      "title": "Milton Aura 1000 Thermosteel Water Bottle, 24 Hr Hot and Cold I Leak Proof Lid, ",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 11:28:31",
-      "title": "Milton Aura 1000 Thermosteel Water Bottle, 24 Hr Hot and Cold I Leak Proof Lid, ",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 11:08:31",
-      "title": "",
-      "telegram": false,
-      "facebook": false,
-      "instagram": false
-    },
-    {
-      "time": "2026-04-30 10:48:00",
-      "title": "100W Fast Charging cable USB-A to Type-C Compatible with OnePlus 15/15R13/13R/12",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 10:27:27",
-      "title": "OnePlus Nord Buds 3 Truly Wireless Bluetooth Earbuds with up to 32dB Active Nois",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 10:06:54",
-      "title": "Portronics Toad One Bluetooth Mouse with 2.4 GHz & BT 5.3 Dual Wireless, 6 Butto",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 09:46:28",
-      "title": "Dyazo Water Resistant Laptop Sleeve/Laptop case/laptop cover with Handle Compati",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 09:25:53",
-      "title": "Bajaj Pygmy Mini Fan 110MM | USB Charging | Multi-Clip Function | Rechargeable |",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 09:05:23",
-      "title": "Comfort Morning Fresh Fabric Conditioner 2 L Refill Pack|| After Wash Liquid Fab",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 08:44:48",
-      "title": "Happi Planet | Washing Machine Cleaner & Descaler Tablets | 8 Tablets | Removes ",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 08:24:20",
-      "title": "APFEN\u00ae 27W Type C to Lightning Fast Charging Cable With High-Speed Data Transfer",
       "telegram": true,
       "facebook": true,
       "instagram": true
