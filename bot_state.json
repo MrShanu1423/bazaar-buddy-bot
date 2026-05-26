@@ -1,22 +1,30 @@
 {
   "enabled": true,
-  "last_post": "2026-05-05 00:49:43",
+  "last_post": "2026-05-26 15:43:39",
   "last_result": {
-    "title": "L'Oreal Paris Extraordinary Oil Hair Serum Powered by Floral Oils for All Hair Types, Volume- 100 ml, Makes hair frizz-free, ",
+    "title": "Sunfeast Dark Fantasy Bourbon, Classic Biscuit Made With Real Chocolate, 108g",
     "telegram": true,
     "facebook": true,
     "instagram": true,
+    "pinterest": false,
     "error": null,
-    "timestamp": "2026-05-05 00:49:43"
+    "timestamp": "2026-05-26 15:43:39"
   },
-  "next_post_at": "2026-05-05 01:10:22",
+  "next_post_at": "2026-05-26 16:04:26",
   "stats": {
-    "telegram": 42,
-    "facebook": 42,
-    "instagram": 42,
-    "total_rounds": 48
+    "telegram": 43,
+    "facebook": 43,
+    "instagram": 43,
+    "total_rounds": 49
   },
   "history": [
+    {
+      "time": "2026-05-26 15:43:39",
+      "title": "Sunfeast Dark Fantasy Bourbon, Classic Biscuit Made With Real Chocolate, 108g",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
     {
       "time": "2026-05-05 00:49:43",
       "title": "L'Oreal Paris Extraordinary Oil Hair Serum Powered by Floral Oils for All Hair T",
@@ -146,13 +154,6 @@
     {
       "time": "2026-04-30 17:55:51",
       "title": "iQOO Z10 Lite 5G (Cyber Green, 4GB RAM, 128GB Storage) | 6000 mAh Battery | Dime",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 17:35:20",
-      "title": "Ambrane Unbreakable 3A Fast Charging 1.5m Braided Type C Cable for Smartphones, ",
       "telegram": true,
       "facebook": true,
       "instagram": true
