@@ -1,23 +1,44 @@
 {
   "enabled": true,
-  "last_post": "2026-05-26 15:43:39",
+  "last_post": "2026-05-26 16:45:37",
   "last_result": {
-    "title": "Sunfeast Dark Fantasy Bourbon, Classic Biscuit Made With Real Chocolate, 108g",
+    "title": "Matrix Antique Day & Date Leather Strap Analog Silicone Watch For Men & Boys - Black",
     "telegram": true,
     "facebook": true,
     "instagram": true,
     "pinterest": false,
     "error": null,
-    "timestamp": "2026-05-26 15:43:39"
+    "timestamp": "2026-05-26 16:45:37"
   },
-  "next_post_at": "2026-05-26 16:04:26",
+  "next_post_at": "2026-05-26 17:06:09",
   "stats": {
-    "telegram": 43,
-    "facebook": 43,
-    "instagram": 43,
-    "total_rounds": 49
+    "telegram": 46,
+    "facebook": 46,
+    "instagram": 46,
+    "total_rounds": 52
   },
   "history": [
+    {
+      "time": "2026-05-26 16:45:37",
+      "title": "Matrix Antique Day & Date Leather Strap Analog Silicone Watch For Men & Boys - B",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-26 16:25:06",
+      "title": "Allen Solly Men's Cotton Crew Neck Sweatshirt",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
+    {
+      "time": "2026-05-26 16:04:26",
+      "title": "Boldfit Resistance Bands Mini Loop Set (Pack of 5) Hip Band / Toning Exercise Ba",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
     {
       "time": "2026-05-26 15:43:39",
       "title": "Sunfeast Dark Fantasy Bourbon, Classic Biscuit Made With Real Chocolate, 108g",
@@ -136,27 +157,6 @@
       "telegram": false,
       "facebook": false,
       "instagram": false
-    },
-    {
-      "time": "2026-05-03 05:03:00",
-      "title": "amazon basics Vacuum Compression Storage Bags with Hand Pump - Medium, 5-Pack",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 18:16:23",
-      "title": "Tide Plus Detergent Washing Powder - 10kg Mega Saver Pack | Jasmine & Rose Fragr",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 17:55:51",
-      "title": "iQOO Z10 Lite 5G (Cyber Green, 4GB RAM, 128GB Storage) | 6000 mAh Battery | Dime",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
     }
   ]
 }
