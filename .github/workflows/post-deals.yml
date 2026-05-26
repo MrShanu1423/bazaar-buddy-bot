@@ -25,4 +25,4 @@ jobs:
 
       - name: Post one deal to all platforms
         run: |
-          python -c "import bot; r = bot.post_one_round(); print('TG:', r['telegram'], 'FB:', r['facebook'], 'IG:', r['instagram'], '|', r['title'][:80])"
+          python -c "import bot; r = bot.post_one_round(); print('TG:', r['telegram'], 'FB:', r['facebook'], 'IG:', r['instagram'], 'PT:', r['pinterest'], '|', r['title'][:80])"

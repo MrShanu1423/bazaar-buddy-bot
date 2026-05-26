@@ -13,6 +13,10 @@ FB_PAGE_TOKEN = "EAANdFOZCViOQBRS0F2wtd8AIqaSYsSxFYZBrlRUwwIjxq2uXhZB9QTnZB2nOq9
 
 IG_USER_ID = "17841454000638756"
 
+# Pinterest credentials (fill these in after setup)
+PINTEREST_ACCESS_TOKEN = ""   # e.g. "pina_..."
+PINTEREST_BOARD_ID = ""       # e.g. "1234567890123456789"
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
@@ -505,13 +509,84 @@ def scrape_products():
     return products
 
 
+def generate_pinterest_description(title, price, discount, rating, reviews, affiliate_link, hashtags):
+    """
+    SEO-optimised Pinterest pin description targeting Indian shoppers.
+    Pinterest indexes first ~150 chars heavily — lead with value keywords.
+    """
+    lines = []
+    # Lead with deal hook
+    if discount:
+        lines.append(f"🔥 {discount} OFF | Best Price in India!")
+    lines.append(f"🛒 {title}")
+    if price:
+        lines.append(f"💰 Only {price} on Amazon India")
+    if rating and reviews:
+        lines.append(f"⭐ {reviews} Reviews | {rating}/5 Rating")
+    lines.append("")
+    lines.append("✅ Fast Delivery across India | Amazon Prime Eligible")
+    lines.append("💡 Great deal for Indian buyers — limited time offer!")
+    lines.append("")
+    lines.append(f"👉 BUY NOW: {affiliate_link}")
+    lines.append("")
+    # Indian-audience keywords + hashtags
+    india_keywords = (
+        "#AmazonIndia #IndiaShopping #BestDealsIndia #OnlineShoppingIndia "
+        "#AmazonDeals #LootDeal #IndianShoppers #BudgetBuyIndia #DiscountIndia "
+        "#SaveMoneyIndia #DealOfTheDay #AffiliateDeals #TopDealsIndia "
+    )
+    lines.append(india_keywords + hashtags)
+    return "\n".join(lines)[:500]   # Pinterest description limit ~500 chars shown
+
+
+def post_to_pinterest(title, price, discount, image_url, affiliate_link, rating, reviews, hashtags):
+    """Post a pin to Pinterest with Indian-SEO-optimised description."""
+    if not PINTEREST_ACCESS_TOKEN or not PINTEREST_BOARD_ID:
+        return False, "Pinterest credentials not set"
+
+    hi_res = upgrade_image_quality(image_url)
+    description = generate_pinterest_description(
+        title, price, discount, rating, reviews, affiliate_link, hashtags
+    )
+    # Pinterest pin title: first 100 chars of product name
+    pin_title = title[:100]
+
+    payload = {
+        "board_id": PINTEREST_BOARD_ID,
+        "title": pin_title,
+        "description": description,
+        "link": affiliate_link,
+        "alt_text": f"{title[:500]} | Amazon India Deal",
+        "media_source": {
+            "source_type": "image_url",
+            "url": hi_res,
+        },
+    }
+    headers = {
+        "Authorization": f"Bearer {PINTEREST_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    resp = requests.post(
+        "https://api.pinterest.com/v5/pins",
+        json=payload,
+        headers=headers,
+        timeout=20,
+    )
+    data = resp.json()
+    ok = "id" in data
+    if not ok:
+        print(f"[Pinterest] Error: {data}")
+    return ok, data.get("id", str(data))
+
+
 def post_one_round():
-    """Post a single product to all 3 platforms. Returns dict with results."""
+    """Post a single product to all platforms. Returns dict with results."""
     result = {
         "title": "",
         "telegram": False,
         "facebook": False,
         "instagram": False,
+        "pinterest": False,
         "error": None,
         "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
     }
@@ -524,11 +599,12 @@ def post_one_round():
         title, price, affiliate_link, image_url, base_link = random.choice(products)
         result["title"] = title
         rating, reviews, seller, original_price, discount = get_product_details(base_link)
+        hashtags = generate_hashtags(title)
 
         # Telegram
         try:
             result["telegram"] = send_to_telegram(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller)
-        except Exception as e:
+        except Exception:
             result["telegram"] = False
 
         time.sleep(2)
@@ -536,7 +612,7 @@ def post_one_round():
         try:
             fb_ok, _ = post_to_facebook(title, price, original_price, discount, image_url, affiliate_link, rating, reviews, seller)
             result["facebook"] = fb_ok
-        except Exception as e:
+        except Exception:
             result["facebook"] = False
 
         time.sleep(2)
@@ -544,8 +620,16 @@ def post_one_round():
         try:
             ig_ok, _ = post_to_instagram(title, discount, image_url, affiliate_link, rating, reviews)
             result["instagram"] = ig_ok
-        except Exception as e:
+        except Exception:
             result["instagram"] = False
+
+        time.sleep(2)
+        # Pinterest
+        try:
+            pt_ok, _ = post_to_pinterest(title, price, discount, image_url, affiliate_link, rating, reviews, hashtags)
+            result["pinterest"] = pt_ok
+        except Exception:
+            result["pinterest"] = False
 
     except Exception as e:
         result["error"] = str(e)

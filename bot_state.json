@@ -1,22 +1,29 @@
 {
   "enabled": true,
-  "last_post": "2026-05-03 10:08:42",
+  "last_post": "2026-05-05 00:49:43",
   "last_result": {
-    "title": "",
-    "telegram": false,
-    "facebook": false,
-    "instagram": false,
-    "error": "No products scraped",
-    "timestamp": "2026-05-03 10:08:42"
+    "title": "L'Oreal Paris Extraordinary Oil Hair Serum Powered by Floral Oils for All Hair Types, Volume- 100 ml, Makes hair frizz-free, ",
+    "telegram": true,
+    "facebook": true,
+    "instagram": true,
+    "error": null,
+    "timestamp": "2026-05-05 00:49:43"
   },
-  "next_post_at": "2026-05-03 10:28:42",
+  "next_post_at": "2026-05-05 01:10:22",
   "stats": {
-    "telegram": 41,
-    "facebook": 41,
-    "instagram": 41,
-    "total_rounds": 47
+    "telegram": 42,
+    "facebook": 42,
+    "instagram": 42,
+    "total_rounds": 48
   },
   "history": [
+    {
+      "time": "2026-05-05 00:49:43",
+      "title": "L'Oreal Paris Extraordinary Oil Hair Serum Powered by Floral Oils for All Hair T",
+      "telegram": true,
+      "facebook": true,
+      "instagram": true
+    },
     {
       "time": "2026-05-03 10:08:42",
       "title": "",
@@ -146,13 +153,6 @@
     {
       "time": "2026-04-30 17:35:20",
       "title": "Ambrane Unbreakable 3A Fast Charging 1.5m Braided Type C Cable for Smartphones, ",
-      "telegram": true,
-      "facebook": true,
-      "instagram": true
-    },
-    {
-      "time": "2026-04-30 17:14:51",
-      "title": "Bajaj Pygmy Mini Fan 110MM | USB Charging | Multi-Clip Function | Rechargeable |",
       "telegram": true,
       "facebook": true,
       "instagram": true
