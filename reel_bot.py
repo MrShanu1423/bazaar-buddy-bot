@@ -16,14 +16,20 @@ from PIL import Image, ImageDraw, ImageFont
 import bot  # reuse credentials, scraping, helpers
 
 # ─── YouTube credentials ──────────────────────────────────────────────────────
-YOUTUBE_CLIENT_ID     = "83449014921-3r36jfqu9s0hv82409361aet6gh59i32.apps.googleusercontent.com"
-YOUTUBE_CLIENT_SECRET = "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"
-# Refresh token — set via env var YOUTUBE_REFRESH_TOKEN (GitHub Secret) or youtube_token.json
+YOUTUBE_CHANNEL_ID    = "UCtsNT0iG_1nsFW9JGqwA_NQ"   # @BazaarBuddyLootDeals
+# All sensitive credentials come from GitHub Secrets (env vars) only
+YOUTUBE_CLIENT_ID     = os.environ.get("YOUTUBE_CLIENT_ID", "")
+YOUTUBE_CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET", "")
 YOUTUBE_REFRESH_TOKEN = os.environ.get("YOUTUBE_REFRESH_TOKEN", "")
 if not YOUTUBE_REFRESH_TOKEN and os.path.exists("youtube_token.json"):
     try:
         with open("youtube_token.json") as _f:
-            YOUTUBE_REFRESH_TOKEN = json.load(_f).get("refresh_token", "")
+            _tok = json.load(_f)
+            YOUTUBE_REFRESH_TOKEN = _tok.get("refresh_token", "")
+            if not YOUTUBE_CLIENT_ID:
+                YOUTUBE_CLIENT_ID = _tok.get("client_id", "")
+            if not YOUTUBE_CLIENT_SECRET:
+                YOUTUBE_CLIENT_SECRET = _tok.get("client_secret", "")
     except Exception:
         pass
 # ─────────────────────────────────────────────────────────────────────────────
