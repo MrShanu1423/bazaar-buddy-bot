@@ -37,10 +37,10 @@ LINKEDIN_AUTHOR_URN   = ""    # e.g. "urn:li:person:XXXXXXXX" or "urn:li:organiz
 THREADS_USER_ID = ""          # same as or linked to your IG_USER_ID
 
 # Twitter/X → Keys & Tokens from developer.twitter.com (need Read+Write permission)
-TWITTER_API_KEY            = ""   # Consumer Key
-TWITTER_API_SECRET         = ""   # Consumer Secret
-TWITTER_ACCESS_TOKEN       = ""   # Access Token (Read+Write)
-TWITTER_ACCESS_TOKEN_SECRET= ""   # Access Token Secret
+TWITTER_API_KEY            = "9TryydAHPxkOLL9AOLFgQz7j8"
+TWITTER_API_SECRET         = "S866vronCJuzYPXKDLpOEvU3Sin1YqV1gF8GInzP6CyleYLZJb"
+TWITTER_ACCESS_TOKEN       = ""   # Access Token (Read+Write) — ABHI MISSING
+TWITTER_ACCESS_TOKEN_SECRET= ""   # Access Token Secret — ABHI MISSING
 # ─────────────────────────────────────────────────────────────────────────────
 
 HEADERS = {
