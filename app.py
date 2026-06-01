@@ -29,7 +29,9 @@ def load_state():
         "last_post": None,
         "last_result": None,
         "next_post_at": None,
-        "stats": {"telegram": 0, "facebook": 0, "instagram": 0, "total_rounds": 0},
+        "stats": {"telegram": 0, "facebook": 0, "instagram": 0,
+                  "discord": 0, "reddit": 0, "linkedin": 0, "threads": 0,
+                  "total_rounds": 0},
         "history": []
     }
 
@@ -69,19 +71,20 @@ def background_loop():
                     s["last_result"] = result
                     s["next_post_at"] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time() + POST_INTERVAL_SECONDS))
                     s["stats"]["total_rounds"] = s["stats"].get("total_rounds", 0) + 1
-                    if result["telegram"]:
-                        s["stats"]["telegram"] = s["stats"].get("telegram", 0) + 1
-                    if result["facebook"]:
-                        s["stats"]["facebook"] = s["stats"].get("facebook", 0) + 1
-                    if result["instagram"]:
-                        s["stats"]["instagram"] = s["stats"].get("instagram", 0) + 1
+                    for p in ["telegram","facebook","instagram","discord","reddit","linkedin","threads"]:
+                        if result.get(p):
+                            s["stats"][p] = s["stats"].get(p, 0) + 1
                     history = s.get("history", [])
                     history.insert(0, {
                         "time": result["timestamp"],
                         "title": result["title"][:80],
-                        "telegram": result["telegram"],
-                        "facebook": result["facebook"],
-                        "instagram": result["instagram"]
+                        "telegram": result.get("telegram"),
+                        "facebook": result.get("facebook"),
+                        "instagram": result.get("instagram"),
+                        "discord": result.get("discord"),
+                        "reddit": result.get("reddit"),
+                        "linkedin": result.get("linkedin"),
+                        "threads": result.get("threads"),
                     })
                     s["history"] = history[:20]
                 update_state(upd)

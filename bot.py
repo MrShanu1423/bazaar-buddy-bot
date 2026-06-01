@@ -17,6 +17,26 @@ IG_USER_ID = "17841454000638756"
 PINTEREST_ACCESS_TOKEN = ""   # e.g. "pina_..."
 PINTEREST_BOARD_ID = ""       # e.g. "1234567890123456789"
 
+# ─── NEW PLATFORMS ───────────────────────────────────────────────────────────
+# Discord  → paste the Webhook URL from Channel Settings → Integrations
+DISCORD_WEBHOOK_URL = ""      # e.g. "https://discord.com/api/webhooks/..."
+
+# Reddit   → create app at reddit.com/prefs/apps (script type)
+REDDIT_CLIENT_ID     = ""     # e.g. "AbCd1234"
+REDDIT_CLIENT_SECRET = ""     # e.g. "xYzSecret..."
+REDDIT_USERNAME      = ""     # your Reddit username
+REDDIT_PASSWORD      = ""     # your Reddit password
+# Subreddits to post in (no r/ prefix)
+REDDIT_SUBREDDITS    = ["DesiDeals", "IndianDeals", "india_deals"]
+
+# LinkedIn → create app at linkedin.com/developers, get access token
+LINKEDIN_ACCESS_TOKEN = ""    # e.g. "AQV..."
+LINKEDIN_AUTHOR_URN   = ""    # e.g. "urn:li:person:XXXXXXXX" or "urn:li:organization:XXXXXXXX"
+
+# Threads  → uses same Meta credentials as Instagram (enable Threads API in Meta app)
+THREADS_USER_ID = ""          # same as or linked to your IG_USER_ID
+# ─────────────────────────────────────────────────────────────────────────────
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
@@ -579,6 +599,180 @@ def post_to_pinterest(title, price, discount, image_url, affiliate_link, rating,
     return ok, data.get("id", str(data))
 
 
+def post_to_discord(title, price, discount, image_url, affiliate_link, rating, reviews):
+    """Post a rich embed to a Discord channel via Webhook."""
+    if not DISCORD_WEBHOOK_URL:
+        return False, "Discord webhook not set"
+    try:
+        short_link = shorten_url(affiliate_link)
+        desc_parts = [f"🔥 **{title}**"]
+        if discount:
+            desc_parts.append(f"💰 **{discount} OFF** — Limited Time!")
+        if price:
+            desc_parts.append(f"🏷️ Price: **{price}**")
+        if rating or reviews:
+            desc_parts.append(f"⭐ {reviews} Reviews | {rating}/5.0")
+        desc_parts.append(f"\n👉 **[BUY NOW]({short_link})**")
+        embed = {
+            "title": title[:256],
+            "url": short_link,
+            "description": "\n".join(desc_parts)[:2048],
+            "color": 0xFF4500,
+            "image": {"url": upgrade_image_quality(image_url)},
+            "footer": {"text": "Bazaar Buddy Loot Deals • Amazon India Affiliate"}
+        }
+        payload = {
+            "username": "Bazaar Buddy 🛒",
+            "avatar_url": "https://mrshanu1423.github.io/bazaar-buddy-bot/logo.png",
+            "embeds": [embed]
+        }
+        resp = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=15)
+        return resp.status_code in (200, 204), resp.text[:100]
+    except Exception as e:
+        return False, str(e)
+
+
+def post_to_reddit(title, price, discount, image_url, affiliate_link):
+    """Post a link submission to configured subreddits via Reddit API."""
+    if not REDDIT_CLIENT_ID or not REDDIT_USERNAME:
+        return False, "Reddit credentials not set"
+    try:
+        auth = requests.auth.HTTPBasicAuth(REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET)
+        data = {
+            "grant_type": "password",
+            "username": REDDIT_USERNAME,
+            "password": REDDIT_PASSWORD
+        }
+        headers = {"User-Agent": "BazaarBuddyBot/1.0 by " + REDDIT_USERNAME}
+        token_resp = requests.post(
+            "https://www.reddit.com/api/v1/access_token",
+            auth=auth, data=data, headers=headers, timeout=10
+        )
+        token = token_resp.json().get("access_token")
+        if not token:
+            return False, f"Reddit auth failed: {token_resp.text[:100]}"
+
+        auth_headers = {**headers, "Authorization": f"bearer {token}"}
+        deal_label = f"[{discount} OFF] " if discount else ""
+        post_title = f"{deal_label}{title[:280]} — ₹{price} on Amazon India"
+
+        results = []
+        for sub in REDDIT_SUBREDDITS:
+            r = requests.post(
+                "https://oauth.reddit.com/api/submit",
+                headers=auth_headers,
+                data={
+                    "sr": sub,
+                    "kind": "link",
+                    "title": post_title[:300],
+                    "url": affiliate_link,
+                    "resubmit": True,
+                    "nsfw": False,
+                    "spoiler": False
+                },
+                timeout=15
+            )
+            results.append(r.status_code == 200)
+            time.sleep(2)
+        return any(results), f"Posted to {sum(results)}/{len(REDDIT_SUBREDDITS)} subreddits"
+    except Exception as e:
+        return False, str(e)
+
+
+def post_to_linkedin(title, price, discount, image_url, affiliate_link):
+    """Post an article/share to LinkedIn page or profile."""
+    if not LINKEDIN_ACCESS_TOKEN or not LINKEDIN_AUTHOR_URN:
+        return False, "LinkedIn credentials not set"
+    try:
+        short_link = shorten_url(affiliate_link)
+        commentary = f"🔥 {title}\n"
+        if discount:
+            commentary += f"💰 {discount} OFF — Limited Time Deal!\n"
+        if price:
+            commentary += f"🏷️ Price: {price} on Amazon India\n"
+        commentary += f"\n👉 BUY NOW: {short_link}\n\n"
+        commentary += "#AmazonDeals #LootDeals #IndiaShopping #BestDeals #OnlineShopping"
+
+        payload = {
+            "author": LINKEDIN_AUTHOR_URN,
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {"text": commentary[:3000]},
+                    "shareMediaCategory": "ARTICLE",
+                    "media": [{
+                        "status": "READY",
+                        "description": {"text": title[:200]},
+                        "originalUrl": affiliate_link,
+                        "title": {"text": (f"{discount} OFF | " if discount else "") + title[:200]}
+                    }]
+                }
+            },
+            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+        }
+        headers = {
+            "Authorization": f"Bearer {LINKEDIN_ACCESS_TOKEN}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0"
+        }
+        resp = requests.post(
+            "https://api.linkedin.com/v2/ugcPosts",
+            json=payload, headers=headers, timeout=15
+        )
+        return resp.status_code == 201, resp.text[:100]
+    except Exception as e:
+        return False, str(e)
+
+
+def post_to_threads(title, discount, image_url, affiliate_link, rating, reviews):
+    """Post to Threads via Meta Graph API (requires Threads API access on Meta app)."""
+    threads_uid = THREADS_USER_ID or IG_USER_ID
+    if not threads_uid:
+        return False, "Threads user ID not set"
+    page_token = get_fb_page_token()
+    if not page_token:
+        return False, "No page token"
+    try:
+        short_link = shorten_url(affiliate_link)
+        hashtags = generate_hashtags(title)
+        lines = [
+            f"🔥 {title}",
+            f"💰 {discount} OFF — Grab this NOW!" if discount else "",
+            f"⭐ {reviews} Reviews | {rating}/5.0" if (rating or reviews) else "",
+            "",
+            f"👉 BUY NOW: {short_link}",
+            "",
+            hashtags
+        ]
+        text = "\n".join(l for l in lines if l is not None)[:500]
+
+        hi_res_url = upgrade_image_quality(image_url)
+        create_resp = requests.post(
+            f"https://graph.facebook.com/v21.0/{threads_uid}/threads",
+            data={
+                "media_type": "IMAGE",
+                "image_url": hi_res_url,
+                "text": text,
+                "access_token": page_token
+            },
+            timeout=30
+        )
+        if create_resp.status_code != 200:
+            return False, f"Threads create failed: {create_resp.text[:150]}"
+        creation_id = create_resp.json().get("id")
+        if not creation_id:
+            return False, "No creation ID"
+        time.sleep(3)
+        pub_resp = requests.post(
+            f"https://graph.facebook.com/v21.0/{threads_uid}/threads_publish",
+            data={"creation_id": creation_id, "access_token": page_token},
+            timeout=30
+        )
+        return pub_resp.status_code == 200, pub_resp.text[:100]
+    except Exception as e:
+        return False, str(e)
+
+
 def post_one_round():
     """Post a single product to all platforms. Returns dict with results."""
     result = {
@@ -587,6 +781,10 @@ def post_one_round():
         "facebook": False,
         "instagram": False,
         "pinterest": False,
+        "discord": False,
+        "reddit": False,
+        "linkedin": False,
+        "threads": False,
         "error": None,
         "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
     }
@@ -630,6 +828,38 @@ def post_one_round():
             result["pinterest"] = pt_ok
         except Exception:
             result["pinterest"] = False
+
+        time.sleep(2)
+        # Discord
+        try:
+            dc_ok, _ = post_to_discord(title, price, discount, image_url, affiliate_link, rating, reviews)
+            result["discord"] = dc_ok
+        except Exception:
+            result["discord"] = False
+
+        time.sleep(2)
+        # Reddit
+        try:
+            rd_ok, _ = post_to_reddit(title, price, discount, image_url, affiliate_link)
+            result["reddit"] = rd_ok
+        except Exception:
+            result["reddit"] = False
+
+        time.sleep(2)
+        # LinkedIn
+        try:
+            li_ok, _ = post_to_linkedin(title, price, discount, image_url, affiliate_link)
+            result["linkedin"] = li_ok
+        except Exception:
+            result["linkedin"] = False
+
+        time.sleep(2)
+        # Threads
+        try:
+            th_ok, _ = post_to_threads(title, discount, image_url, affiliate_link, rating, reviews)
+            result["threads"] = th_ok
+        except Exception:
+            result["threads"] = False
 
     except Exception as e:
         result["error"] = str(e)
