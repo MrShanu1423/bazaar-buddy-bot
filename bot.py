@@ -39,8 +39,8 @@ THREADS_USER_ID = ""          # same as or linked to your IG_USER_ID
 # Twitter/X → Keys & Tokens from developer.twitter.com (need Read+Write permission)
 TWITTER_API_KEY            = "9TryydAHPxkOLL9AOLFgQz7j8"
 TWITTER_API_SECRET         = "S866vronCJuzYPXKDLpOEvU3Sin1YqV1gF8GInzP6CyleYLZJb"
-TWITTER_ACCESS_TOKEN       = ""   # Access Token (Read+Write) — ABHI MISSING
-TWITTER_ACCESS_TOKEN_SECRET= ""   # Access Token Secret — ABHI MISSING
+TWITTER_ACCESS_TOKEN       = "1839601718151237632-klhpj27chLt5N8iNMb43ABaLdiXARl"
+TWITTER_ACCESS_TOKEN_SECRET= "Y1WDDmOvnmyYZ0wqcHcBRo3wa5k22xyk00ZMnr6skU4G5"
 # ─────────────────────────────────────────────────────────────────────────────
 
 HEADERS = {
@@ -610,45 +610,65 @@ def post_to_twitter(title, price, discount, affiliate_link, rating, reviews):
     if not TWITTER_API_KEY or not TWITTER_ACCESS_TOKEN:
         return False, "Twitter credentials not set"
     try:
-        import hmac, hashlib, base64, urllib.parse
+        import hmac as _hmac, hashlib, base64, urllib.parse
         short_link = shorten_url(affiliate_link)
         lines = []
         if discount:
             lines.append(f"🔥 {discount} OFF Deal!")
-        lines.append(f"🛒 {title[:180]}")
+        lines.append(f"🛒 {title[:150]}")
         if price:
             lines.append(f"💰 {price} on Amazon India")
-        if rating or reviews:
-            lines.append(f"⭐ {reviews} Reviews | {rating}/5.0" if (rating and reviews) else f"⭐ {rating}/5.0" if rating else f"⭐ {reviews} Reviews")
+        if rating and reviews:
+            lines.append(f"⭐ {reviews} Reviews | {rating}/5.0")
+        elif rating:
+            lines.append(f"⭐ {rating}/5.0")
         lines.append(f"👉 {short_link}")
-        lines.append("#AmazonDeals #LootDeals #AmazonIndia #IndiaShopping")
+        lines.append("#AmazonDeals #LootDeals #AmazonIndia")
         tweet_text = "\n".join(lines)[:280]
 
-        import time as _time
-        oauth_timestamp = str(int(_time.time()))
-        oauth_nonce = base64.b64encode(os.urandom(32)).decode().rstrip("=")
-
-        params = {
-            "oauth_consumer_key": TWITTER_API_KEY,
-            "oauth_nonce": oauth_nonce,
-            "oauth_signature_method": "HMAC-SHA1",
-            "oauth_timestamp": oauth_timestamp,
-            "oauth_token": TWITTER_ACCESS_TOKEN,
-            "oauth_version": "1.0",
-        }
+        oauth_timestamp = str(int(time.time()))
+        oauth_nonce = base64.b64encode(os.urandom(32)).decode().replace("+","").replace("/","").replace("=","")[:32]
         base_url = "https://api.twitter.com/2/tweets"
-        param_str = "&".join(f"{urllib.parse.quote(k,'')  }={urllib.parse.quote(str(v),'')}" for k, v in sorted(params.items()))
-        sig_base = f"POST&{urllib.parse.quote(base_url,'')}&{urllib.parse.quote(param_str,'')}"
-        signing_key = f"{urllib.parse.quote(TWITTER_API_SECRET,'')}%26{urllib.parse.quote(TWITTER_ACCESS_TOKEN_SECRET,'')}"
-        signing_key_bytes = signing_key.encode()
-        sig = base64.b64encode(hmac.new(signing_key_bytes, sig_base.encode(), hashlib.sha1).digest()).decode()
-        params["oauth_signature"] = sig
 
-        auth_header = "OAuth " + ", ".join(f'{urllib.parse.quote(k,"")}="{urllib.parse.quote(str(v),"")}"' for k, v in sorted(params.items()))
+        oauth_params = {
+            "oauth_consumer_key":     TWITTER_API_KEY,
+            "oauth_nonce":            oauth_nonce,
+            "oauth_signature_method": "HMAC-SHA1",
+            "oauth_timestamp":        oauth_timestamp,
+            "oauth_token":            TWITTER_ACCESS_TOKEN,
+            "oauth_version":          "1.0",
+        }
+
+        # Signature base string
+        param_str = "&".join(
+            f"{urllib.parse.quote(k, safe='')}={urllib.parse.quote(str(v), safe='')}"
+            for k, v in sorted(oauth_params.items())
+        )
+        sig_base = "&".join([
+            "POST",
+            urllib.parse.quote(base_url, safe=''),
+            urllib.parse.quote(param_str, safe=''),
+        ])
+
+        # Signing key = percent_encode(consumer_secret) & percent_encode(token_secret)
+        signing_key = (
+            urllib.parse.quote(TWITTER_API_SECRET, safe='') + "&" +
+            urllib.parse.quote(TWITTER_ACCESS_TOKEN_SECRET, safe='')
+        ).encode("ascii")
+
+        sig = base64.b64encode(
+            _hmac.new(signing_key, sig_base.encode("ascii"), hashlib.sha1).digest()
+        ).decode()
+        oauth_params["oauth_signature"] = sig
+
+        auth_header = "OAuth " + ", ".join(
+            f'{urllib.parse.quote(k, safe="")}="{urllib.parse.quote(str(v), safe="")}"'
+            for k, v in sorted(oauth_params.items())
+        )
         headers = {"Authorization": auth_header, "Content-Type": "application/json"}
         resp = requests.post(base_url, json={"text": tweet_text}, headers=headers, timeout=15)
         ok = resp.status_code in (200, 201)
-        return ok, resp.text[:150]
+        return ok, resp.text[:200]
     except Exception as e:
         return False, str(e)
 
