@@ -35,6 +35,12 @@ LINKEDIN_AUTHOR_URN   = ""    # e.g. "urn:li:person:XXXXXXXX" or "urn:li:organiz
 
 # Threads  → uses same Meta credentials as Instagram (enable Threads API in Meta app)
 THREADS_USER_ID = ""          # same as or linked to your IG_USER_ID
+
+# Twitter/X → Keys & Tokens from developer.twitter.com (need Read+Write permission)
+TWITTER_API_KEY            = ""   # Consumer Key
+TWITTER_API_SECRET         = ""   # Consumer Secret
+TWITTER_ACCESS_TOKEN       = ""   # Access Token (Read+Write)
+TWITTER_ACCESS_TOKEN_SECRET= ""   # Access Token Secret
 # ─────────────────────────────────────────────────────────────────────────────
 
 HEADERS = {
@@ -599,6 +605,54 @@ def post_to_pinterest(title, price, discount, image_url, affiliate_link, rating,
     return ok, data.get("id", str(data))
 
 
+def post_to_twitter(title, price, discount, affiliate_link, rating, reviews):
+    """Post a tweet via Twitter API v2 using OAuth 1.0a (needs Read+Write permission)."""
+    if not TWITTER_API_KEY or not TWITTER_ACCESS_TOKEN:
+        return False, "Twitter credentials not set"
+    try:
+        import hmac, hashlib, base64, urllib.parse
+        short_link = shorten_url(affiliate_link)
+        lines = []
+        if discount:
+            lines.append(f"🔥 {discount} OFF Deal!")
+        lines.append(f"🛒 {title[:180]}")
+        if price:
+            lines.append(f"💰 {price} on Amazon India")
+        if rating or reviews:
+            lines.append(f"⭐ {reviews} Reviews | {rating}/5.0" if (rating and reviews) else f"⭐ {rating}/5.0" if rating else f"⭐ {reviews} Reviews")
+        lines.append(f"👉 {short_link}")
+        lines.append("#AmazonDeals #LootDeals #AmazonIndia #IndiaShopping")
+        tweet_text = "\n".join(lines)[:280]
+
+        import time as _time
+        oauth_timestamp = str(int(_time.time()))
+        oauth_nonce = base64.b64encode(os.urandom(32)).decode().rstrip("=")
+
+        params = {
+            "oauth_consumer_key": TWITTER_API_KEY,
+            "oauth_nonce": oauth_nonce,
+            "oauth_signature_method": "HMAC-SHA1",
+            "oauth_timestamp": oauth_timestamp,
+            "oauth_token": TWITTER_ACCESS_TOKEN,
+            "oauth_version": "1.0",
+        }
+        base_url = "https://api.twitter.com/2/tweets"
+        param_str = "&".join(f"{urllib.parse.quote(k,'')  }={urllib.parse.quote(str(v),'')}" for k, v in sorted(params.items()))
+        sig_base = f"POST&{urllib.parse.quote(base_url,'')}&{urllib.parse.quote(param_str,'')}"
+        signing_key = f"{urllib.parse.quote(TWITTER_API_SECRET,'')}%26{urllib.parse.quote(TWITTER_ACCESS_TOKEN_SECRET,'')}"
+        signing_key_bytes = signing_key.encode()
+        sig = base64.b64encode(hmac.new(signing_key_bytes, sig_base.encode(), hashlib.sha1).digest()).decode()
+        params["oauth_signature"] = sig
+
+        auth_header = "OAuth " + ", ".join(f'{urllib.parse.quote(k,"")}="{urllib.parse.quote(str(v),"")}"' for k, v in sorted(params.items()))
+        headers = {"Authorization": auth_header, "Content-Type": "application/json"}
+        resp = requests.post(base_url, json={"text": tweet_text}, headers=headers, timeout=15)
+        ok = resp.status_code in (200, 201)
+        return ok, resp.text[:150]
+    except Exception as e:
+        return False, str(e)
+
+
 def post_to_discord(title, price, discount, image_url, affiliate_link, rating, reviews):
     """Post a rich embed to a Discord channel via Webhook."""
     if not DISCORD_WEBHOOK_URL:
@@ -785,6 +839,7 @@ def post_one_round():
         "reddit": False,
         "linkedin": False,
         "threads": False,
+        "twitter": False,
         "error": None,
         "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
     }
@@ -860,6 +915,14 @@ def post_one_round():
             result["threads"] = th_ok
         except Exception:
             result["threads"] = False
+
+        time.sleep(2)
+        # Twitter/X
+        try:
+            tw_ok, _ = post_to_twitter(title, price, discount, affiliate_link, rating, reviews)
+            result["twitter"] = tw_ok
+        except Exception:
+            result["twitter"] = False
 
     except Exception as e:
         result["error"] = str(e)

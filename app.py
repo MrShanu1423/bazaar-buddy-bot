@@ -30,7 +30,7 @@ def load_state():
         "last_result": None,
         "next_post_at": None,
         "stats": {"telegram": 0, "facebook": 0, "instagram": 0,
-                  "discord": 0, "reddit": 0, "linkedin": 0, "threads": 0,
+                  "discord": 0, "reddit": 0, "linkedin": 0, "threads": 0, "twitter": 0,
                   "total_rounds": 0},
         "history": []
     }
@@ -71,7 +71,7 @@ def background_loop():
                     s["last_result"] = result
                     s["next_post_at"] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time() + POST_INTERVAL_SECONDS))
                     s["stats"]["total_rounds"] = s["stats"].get("total_rounds", 0) + 1
-                    for p in ["telegram","facebook","instagram","discord","reddit","linkedin","threads"]:
+                    for p in ["telegram","facebook","instagram","discord","reddit","linkedin","threads","twitter"]:
                         if result.get(p):
                             s["stats"][p] = s["stats"].get(p, 0) + 1
                     history = s.get("history", [])
