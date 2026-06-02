@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import time
 import random
 import json
+import re
+import urllib.parse
 
 BOT_TOKEN = "8608712234:AAEQIOKSBzTeDnIZeuVUg-3mobgbBIT_KVU"
 CHAT_ID = "-1003706154836"
@@ -200,14 +202,53 @@ def get_fb_page_token():
 
 
 def shorten_url(long_url):
-    """Shorten URL via TinyURL (free, no API key needed). Falls back to original."""
+    """Shorten URL — tries is.gd, then cleans to bare Amazon affiliate URL."""
+    # First clean the URL to a bare Amazon affiliate link (removes viglink etc.)
+    clean = clean_affiliate_url(long_url)
     try:
-        r = requests.get("https://tinyurl.com/api-create.php", params={"url": long_url}, timeout=8)
-        if r.status_code == 200 and r.text.startswith("http"):
+        r = requests.get(
+            "https://is.gd/create.php",
+            params={"format": "simple", "url": clean},
+            timeout=8,
+        )
+        if r.status_code == 200 and r.text.strip().startswith("http"):
             return r.text.strip()
-    except:
+    except Exception:
         pass
-    return long_url
+    # Fallback: return clean URL directly
+    return clean
+
+
+def extract_asin(url):
+    """Extract Amazon ASIN (10-char alphanumeric) from any Amazon URL."""
+    import re
+    for pattern in [r"/dp/([A-Z0-9]{10})", r"/product/([A-Z0-9]{10})",
+                    r"/gp/product/([A-Z0-9]{10})", r"ASIN=([A-Z0-9]{10})",
+                    r"/([A-Z0-9]{10})(?:/|\?|$)"]:
+        m = re.search(pattern, url)
+        if m:
+            return m.group(1)
+    return None
+
+
+def clean_affiliate_url(url):
+    """
+    Strip any redirect wrapper (viglink, etc.) and return a clean
+    amazon.in/dp/ASIN?tag=dattatrey07-21 URL.
+    Falls back to original URL if ASIN not found.
+    """
+    import urllib.parse
+    # Unwrap viglink / redirect.viglink.com
+    parsed = urllib.parse.urlparse(url)
+    if "viglink" in parsed.netloc or "viglink" in parsed.path:
+        qs = urllib.parse.parse_qs(parsed.query)
+        inner = qs.get("u", qs.get("url", [None]))[0]
+        if inner:
+            url = urllib.parse.unquote(inner)
+    asin = extract_asin(url)
+    if asin:
+        return f"https://www.amazon.in/dp/{asin}?tag={AFFILIATE_ID}"
+    return url
 
 
 def generate_hashtags(title):
@@ -506,32 +547,58 @@ def post_to_facebook(title, price, original_price, discount, image_url, affiliat
 
 
 def scrape_products():
+    """
+    Scrape Amazon India bestsellers from a random category.
+    Always builds clean  amazon.in/dp/ASIN?tag=...  affiliate URLs
+    so no viglink / redirect wrappers ever appear.
+    """
+    import re
     url = random.choice(CATEGORIES)
-    page = requests.get(url, headers=HEADERS, timeout=15)
-    soup = BeautifulSoup(page.text, "html.parser")
+    try:
+        page = requests.get(url, headers=HEADERS, timeout=15)
+    except Exception as e:
+        print(f"[BOT] Scrape request failed: {e}")
+        return []
 
+    soup = BeautifulSoup(page.text, "html.parser")
     items = soup.select(".zg-grid-general-faceout")
     products = []
 
     for item in items[:20]:
         try:
             img_tag = item.select_one("img")
-            title = img_tag["alt"]
+            if not img_tag:
+                continue
+            title     = img_tag.get("alt", "").strip()
             image_url = img_tag.get("src") or img_tag.get("data-src", "")
 
-            link = "https://www.amazon.in" + item.select_one("a")["href"]
-            price_tag = item.select_one(".p13n-sc-price")
-            price = price_tag.get_text(strip=True) if price_tag else "Check price"
+            a_tag = item.select_one("a[href]")
+            if not a_tag:
+                continue
+            raw_href = a_tag["href"]
 
-            base_link = link.split("?")[0]
-            affiliate_link = base_link + f"?tag={AFFILIATE_ID}"
+            # --- Extract ASIN from the href (handles viglink & normal links) ---
+            full_link = raw_href if raw_href.startswith("http") else "https://www.amazon.in" + raw_href
+            asin = extract_asin(full_link)
+            if not asin:
+                # Try decoding viglink-wrapped URL
+                asin = extract_asin(urllib.parse.unquote(full_link))
+            if not asin:
+                continue  # skip if ASIN cannot be determined
+
+            base_link     = f"https://www.amazon.in/dp/{asin}"
+            affiliate_link = f"{base_link}?tag={AFFILIATE_ID}"
+
+            price_tag = item.select_one(".p13n-sc-price")
+            price = price_tag.get_text(strip=True) if price_tag else ""
 
             if image_url and title:
                 hi_res_image = upgrade_image_quality(image_url)
                 products.append((title, price, affiliate_link, hi_res_image, base_link))
-        except:
+        except Exception:
             continue
 
+    print(f"[BOT] Scraped {len(products)} products from {url}")
     return products
 
 
