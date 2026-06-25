@@ -571,55 +571,9 @@ def render_video(frame_path, music_path, vo_path, ding_path,
         f":d={total}:s={W}x{H}:fps={FPS}"
     )
 
-    # ── Text overlays — 5-scene structure ────────────────────────────────
-    texts = []
-    ff    = BOLD_TTF or ""
-
-    def dt(text, fs, fc, x, y, t0, t1, sx=3, sy=3, sc="0x000000"):
-        if not ff:
-            return
-        texts.append(
-            f"drawtext=text='{text}'"
-            f":fontfile={ff}:fontsize={fs}:fontcolor={fc}"
-            f":x={x}:y={y}:{_fade(t0, t1)}"
-            f":shadowcolor={sc}:shadowx={sx}:shadowy={sy}"
-        )
-
-    # Scene 1 (0-3s) — Hook
-    dt("AMAZON DEAL ALERT!", 62, "0xFFFFFF",
-       "(w-tw)/2", "h/2-80", 0, 1.5, sc="0xFF6600")
-    dt("Don't miss this!", 44, "0xFF9900",
-       "(w-tw)/2", "h/2", 1.5, 3, sc="0x000000")
-
-    # Scene 2 (3-7s) — Product (frame itself shows it; just brand reminder)
-    dt("BAZAAR BUDDY LOOT DEALS", 36, "0xFFFFFF",
-       "(w-tw)/2", "h-200", 3, 5)
-
-    # Scene 3 (7-12s) — Price reveal
-    price_s = _s(price)
-    disc_s  = _s(discount)
-    if price_s:
-        dt(price_s, 74, "0xFFCC00",
-           "(w-tw)/2", "h-300", 7, 9, sc="0x000000", sx=5, sy=5)
-    if disc_s:
-        dt(f"{disc_s} OFF - GRAB NOW!", 48, "0xFF3333",
-           "(w-tw)/2", "h-230", 9, 11)
-
-    # Scene 4 (12-17s) — CTA
-    link_s = _s(short_link, 50)
-    if link_s:
-        dt(f"BUY NOW >> {link_s}", 38, "0x00D4FF",
-           "(w-tw)/2", "h-160", 12, 14)
-    dt("TAP THE LINK BELOW!", 50, "0xFF9900",
-       "(w-tw)/2", "h-90", 15, 17, sc="0x000000")
-
-    # Scene 5 (17-20s) — Subscribe
-    dt("SUBSCRIBE for Daily Deals!", 46, "0xFFCC00",
-       "(w-tw)/2", "h/2", 17, 19, sc="0xFF3300")
-
+    # No drawtext overlays — all info is already in the poster frame.
+    # Adding ffmpeg text on top creates clutter and double-text artifacts.
     vf = zoom_vf
-    if texts:
-        vf += "," + ",".join(texts)
 
     # ── Build audio filter ────────────────────────────────────────────────
     # Inputs: frame(0), music(1?), vo(2?), ding(3?)
@@ -1171,12 +1125,9 @@ def post_daily_reel():
     res["yt"] = bool(yt_r)
     print(f"[REEL] YouTube   : {'✅' if res['yt'] else '❌'}")
 
-    # 8 — Cleanup + report
+    # 8 — Cleanup
     try:    os.unlink(video_path)
     except Exception: pass
-
-    send_report(res, title, price, discount,
-                yt_r if isinstance(yt_r, str) else None)
 
     print(f"\n[REEL] ══ DONE  TG={res['tg']} FB={res['fb']} "
           f"IG={res['ig']} YT={res['yt']} ══")

@@ -614,13 +614,37 @@ def scrape_products():
             price_tag = item.select_one(".p13n-sc-price")
             price = price_tag.get_text(strip=True) if price_tag else ""
 
-            if image_url and title:
-                hi_res_image = upgrade_image_quality(image_url)
-                products.append((title, price, affiliate_link, hi_res_image, base_link))
+            # ── Quality filter — skip junk/irrelevant products ──────────
+            if not image_url or not title:
+                continue
+            title_low = title.lower()
+            # Skip gift cards, bills, credit cards, vouchers, books etc.
+            junk_keywords = [
+                "credit card", "gift card", "voucher", "e-gift",
+                "book", "novel", "magazine", "comic", "diary",
+                "bill", "recharge", "subscription", "membership",
+                "card bill", "wallet", "digital code",
+            ]
+            if any(kw in title_low for kw in junk_keywords):
+                continue
+            # Skip if no real price or price is suspiciously low (<₹50)
+            if price:
+                try:
+                    num = float(re.sub(r"[^\d.]", "", price))
+                    if num < 50:
+                        continue
+                except Exception:
+                    pass
+            # Skip tiny/placeholder thumbnail images
+            if image_url.endswith("_.jpg") or "transparent-pixel" in image_url:
+                continue
+
+            hi_res_image = upgrade_image_quality(image_url)
+            products.append((title, price, affiliate_link, hi_res_image, base_link))
         except Exception:
             continue
 
-    print(f"[BOT] Scraped {len(products)} products from {url}")
+    print(f"[BOT] Scraped {len(products)} valid products from {url}")
     return products
 
 
