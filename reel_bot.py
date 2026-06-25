@@ -294,7 +294,7 @@ def build_frame(title, price, discount, image_url, short_link):
               "❤️ Follow on Instagram: @bazaarbuddylootdeals",
               f_fol, C_CYAN, C_CYAN)
     neon_text(draw, (W//2, 1920 - 16),
-              "📢 Amazon India Affiliate  |  Tag: dattatrey07-21",
+              "🛍️ Best Deals  •  Daily  •  Amazon India",
               f_fol, (160, 120, 255), C_PURPLE)
 
     return img
