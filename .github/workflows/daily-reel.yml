@@ -9,7 +9,7 @@ on:
 jobs:
   post-reel:
     runs-on: ubuntu-latest
-    timeout-minutes: 45      # ← was 10 (too short!); video render + IG + YT needs 20-30 min
+    timeout-minutes: 55
 
     steps:
       - name: Checkout code
@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install system dependencies (ffmpeg + fonts)
+      - name: Install system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y \
@@ -40,5 +40,6 @@ jobs:
           YOUTUBE_CLIENT_ID:     ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          ELEVENLABS_API_KEY:    ${{ secrets.ELEVENLABS_API_KEY }}
         run: |
           python reel_bot.py

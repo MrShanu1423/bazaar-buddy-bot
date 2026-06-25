@@ -1,0 +1,435 @@
+
+
+* Product image properly visible nahi hai.
+
+* Product features highlight nahi ho rahe.
+
+* Hook weak hai.
+
+* Amazon product photos/video ka smart use nahi ho raha.
+
+* Branding aur CTA cluttered lag rahe hain.
+
+* Reel "deal alert" jaisi lag rahi hai, "product showcase" jaisi nahi.
+
+
+
+
+
+# MASTER PROMPT FOR REPLIT AI AMAZON AFFILIATE REELS
+
+
+
+You are an expert short-form video editor and AI motion graphics creator.
+
+
+
+Create premium Amazon affiliate reels for Instagram Reels, YouTube Shorts, Facebook Reels and Telegram.
+
+
+
+GOAL:
+
+Increase clicks, saves, shares and affiliate conversions.
+
+
+
+VIDEO FORMAT:
+
+
+
+* 1080x1920 Vertical
+
+* Duration 15-25 seconds
+
+* Professional Ecommerce Style
+
+* Fast paced editing
+
+* Modern transitions
+
+* High retention hooks
+
+
+
+INPUT DATA:
+
+
+
+* Product title
+
+* Product images
+
+* Product features
+
+* Amazon product URL
+
+* Product price
+
+* Product rating
+
+* Product videos (if available)
+
+
+
+VIDEO STRUCTURE:
+
+
+
+SCENE 1 (0-3 sec)
+
+HOOK
+
+
+
+Display:
+
+
+
+"🔥 Amazon Deal Alert!"
+
+or
+
+"😱 This Product Is Going Viral"
+
+or
+
+"⚡ Don't Buy Before Seeing This"
+
+
+
+Use zoom effects.
+
+Use motion blur.
+
+Use sound impact.
+
+
+
+SCENE 2 (3-8 sec)
+
+PRODUCT SHOWCASE
+
+
+
+Generate AI animated product reveal.
+
+
+
+Requirements:
+
+
+
+* Remove background
+
+* Create cinematic rotation
+
+* Floating product effect
+
+* Dynamic shadows
+
+* Premium lighting
+
+
+
+Show product from multiple angles.
+
+
+
+SCENE 3 (8-15 sec)
+
+FEATURES SECTION
+
+
+
+Show each feature separately.
+
+
+
+Example:
+
+
+
+✅ Premium Quality
+
+✅ Easy To Use
+
+✅ Lightweight
+
+✅ Long Lasting
+
+✅ Best Seller
+
+
+
+Each feature should have:
+
+
+
+* Icon
+
+* Animation
+
+* Product closeup
+
+
+
+SCENE 4 (15-20 sec)
+
+PRICE + OFFER
+
+
+
+Display:
+
+
+
+🏷 Current Price
+
+
+
+💰 Savings
+
+
+
+⭐ Rating
+
+
+
+🚚 Delivery
+
+
+
+Use Amazon style UI.
+
+
+
+SCENE 5 (20-25 sec)
+
+CALL TO ACTION
+
+
+
+Display:
+
+
+
+🛒 Buy Now
+
+
+
+👇 Link In Bio
+
+
+
+🔥 Limited Time Deal
+
+
+
+BRANDING (MUST SHOW)
+
+
+
+Bottom area throughout video:
+
+
+
+🔔 SUBSCRIBE • YouTube: @BazaarBuddyLootDeals
+
+
+
+❤️ Instagram: @bazaarbuddylootdeals
+
+
+
+📢 Telegram: t.me/BazaarBuddyLootDeals
+
+
+
+🛍️ Best Deals • Daily • Amazon India
+
+
+
+VISUAL QUALITY RULES
+
+
+
+* No empty spaces
+
+* No blurry images
+
+* No stretched images
+
+* No low quality screenshots
+
+* No random text
+
+
+
+Always use:
+
+
+
+* Product image cutouts
+
+* Product zoom shots
+
+* AI generated cinematic scenes
+
+* Smooth transitions
+
+* Motion graphics
+
+
+
+IF PRODUCT VIDEO EXISTS
+
+
+
+Use original product video clips.
+
+
+
+Enhance with:
+
+
+
+* AI stabilization
+
+* AI upscaling
+
+* Slow motion
+
+* Dynamic zoom
+
+* Feature callouts
+
+
+
+IF ONLY PRODUCT IMAGES EXIST
+
+
+
+Generate AI motion video from images.
+
+
+
+Create:
+
+
+
+* 3D parallax
+
+* Product rotation
+
+* Cinematic camera movements
+
+* Floating product effect
+
+
+
+OUTPUT STYLE
+
+
+
+Style Reference:
+
+
+
+Amazon Premium Ads
+
+Flipkart Video Ads
+
+Apple Product Commercials
+
+Modern Ecommerce Reels
+
+
+
+COLOR RULES
+
+
+
+Use:
+
+
+
+* Black
+
+* White
+
+* Amazon Orange
+
+* Premium Gold Accents
+
+
+
+Avoid:
+
+
+
+* Neon clutter
+
+* Random backgrounds
+
+* Excessive flashing
+
+
+
+FINAL REQUIREMENT
+
+
+
+Every reel must look like a professional paid advertisement, not a Telegram deal poster.
+
+
+
+Focus on:
+
+
+
+1. Product visibility
+
+2. Product benefits
+
+3. High retention editing
+
+4. Conversion optimization
+
+5. Premium AI motion graphics
+
+
+
+---
+
+
+
+Aur ek important improvement: sirf Amazon image se reel mat banao. Automation mein ye flow rakho:
+
+
+
+1. Amazon Product API → images fetch
+
+2. Product description extract
+
+3. AI se top 5 features generate
+
+4. Background remove
+
+5. AI motion generate
+
+6. Auto voiceover:
+
+
+
+   * "Ye product Amazon par trending hai..."
+
+7. Auto captions
+
+8. Branding overlay
+
+9. Export 1080×1920 H.264
+
+
+
+Isse reels poster jaisi nahi, proper affiliate ad jaisi lagenge aur CTR kaafi improve ho sakta hai.
