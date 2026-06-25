@@ -290,10 +290,13 @@ def build_frame(title, price, discount, image_url, short_link):
     neon_text(draw, (W//2, 1848),
               "🔔 SUBSCRIBE  •  YouTube: @BazaarBuddyLootDeals",
               f_sub, C_GOLD, C_GOLD)
-    neon_text(draw, (W//2, 1890),
-              "❤️ Follow on Instagram: @bazaarbuddylootdeals",
+    neon_text(draw, (W//2, 1883),
+              "❤️ Instagram: @bazaarbuddylootdeals",
               f_fol, C_CYAN, C_CYAN)
-    neon_text(draw, (W//2, 1920 - 16),
+    neon_text(draw, (W//2, 1910),
+              "📢 Telegram: t.me/BazaarBuddyLootDeals",
+              f_fol, (100, 180, 255), C_CYAN)
+    neon_text(draw, (W//2, 1937),
               "🛍️ Best Deals  •  Daily  •  Amazon India",
               f_fol, (160, 120, 255), C_PURPLE)
 
