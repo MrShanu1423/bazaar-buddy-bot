@@ -1,16 +1,19 @@
 """
-Bazaar Buddy — Daily Reel Bot v4 (Professional Edition)
-========================================================
-Format  : 1080×1920  9:16  30 FPS  H.264  AAC-48kHz
-Duration: 20 seconds
-Design  : Amazon-style professional ad (black / orange / gold)
-Features:
-  • Image proxy (images.weserv.nl) bypasses Amazon CDN IP blocks
-  • 5-scene animated structure per master prompt
-  • ElevenLabs AI voiceover (English/Hindi blend)
-  • Layered background music + SFX
-  • 3-level ffmpeg fallback so video ALWAYS renders
-  • Telegram report at end
+Bazaar Buddy — Daily Reel Bot v5 (Cinematic Multi-Scene)
+=========================================================
+Format : 1080×1920  9:16  30 FPS  H.264  AAC-48kHz  20 sec
+Engine : 4 separate PNG scenes → ffmpeg xfade concat → final MP4
+
+SCENE STRUCTURE
+  Scene 1 (0–4s)   HOOK       — black/orange, animated deal-alert text
+  Scene 2 (4–10s)  PRODUCT    — full-screen product image, title, rating
+  Scene 3 (10–15s) FEATURES   — WHY BUY section, 4 bullet features
+  Scene 4 (15–20s) PRICE+CTA  — big price, discount, link, subscribe CTA
+
+Crash-proofing:
+  • 3-layer image download (direct → weserv proxy → text placeholder)
+  • 3-level video render (full xfade → simple concat → static fallback)
+  • Product junk-filter & fallback product list
 """
 
 import io
@@ -46,431 +49,428 @@ if not YOUTUBE_REFRESH_TOKEN and os.path.exists("youtube_token.json"):
     except Exception:
         pass
 
-# ─── Canvas ───────────────────────────────────────────────────────────────────
-W, H   = 1080, 1920
-FPS    = 30
-DUR    = 20          # seconds — sweet spot for affiliate reels
+# ─── Constants ────────────────────────────────────────────────────────────────
+W, H  = 1080, 1920
+FPS   = 30
+DUR   = 20
 
-# ─── Color palette (Amazon-style) ────────────────────────────────────────────
-C_BLACK  = (8,   8,  12)
-C_DARK   = (18,  18, 28)
-C_ORANGE = (255, 153,  0)   # Amazon orange
-C_GOLD   = (255, 200, 10)
-C_WHITE  = (255, 255, 255)
-C_GREY   = (180, 180, 190)
-C_GREEN  = ( 0,  185,  80)
-C_CYAN   = ( 0,  210, 255)
-C_RED    = (220,  40,  40)
+# Scene durations (seconds)
+S1_DUR = 4    # Hook
+S2_DUR = 6    # Product
+S3_DUR = 5    # Features
+S4_DUR = 5    # Price + CTA
+XFADE  = 0.6  # Transition duration
+
+# ─── Palette ─────────────────────────────────────────────────────────────────
+BG     = (8,   8,  14)
+ORANGE = (255, 153,  0)
+GOLD   = (255, 210, 20)
+WHITE  = (255, 255, 255)
+GREY   = (170, 170, 185)
+CYAN   = (0,   210, 255)
+RED    = (220,  40,  40)
+GREEN  = (30,  200,  80)
+DARK   = (16,  16,  26)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FONTS
+# FONTS + DRAWING HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
-def load_font(size, bold=False):
-    candidates = (
+
+def font(size, bold=False):
+    paths = (
         ["/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
          "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-         "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
          "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"]
         if bold else
         ["/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
          "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-         "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
          "/usr/share/fonts/truetype/freefont/FreeSans.ttf"]
     )
-    for p in candidates:
+    for p in paths:
         if os.path.exists(p):
-            try:
-                return ImageFont.truetype(p, size)
-            except Exception:
-                continue
+            try: return ImageFont.truetype(p, size)
+            except Exception: continue
     return ImageFont.load_default()
 
-BOLD_TTF = next(
-    (p for p in [
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-    ] if os.path.exists(p)), ""
-)
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# DRAWING HELPERS
-# ═══════════════════════════════════════════════════════════════════════════════
-def grad_rect(draw, x0, y0, x1, y1, top, bot_col):
+def vgrad(draw, x0, y0, x1, y1, top, bot_col):
     h = max(y1 - y0, 1)
     for dy in range(h):
         t = dy / h
-        r = int(top[0] + t * (bot_col[0] - top[0]))
-        g = int(top[1] + t * (bot_col[1] - top[1]))
-        b = int(top[2] + t * (bot_col[2] - top[2]))
-        draw.line([(x0, y0 + dy), (x1, y0 + dy)], fill=(r, g, b))
+        c = tuple(int(top[i] + t*(bot_col[i]-top[i])) for i in range(3))
+        draw.line([(x0, y0+dy), (x1, y0+dy)], fill=c)
 
 
-def shadow_text(draw, xy, text, font, fill, shadow=(0,0,0), anchor="mm", offset=3):
+def txt(draw, xy, text, fnt, fill, shadow_col=(0,0,0), anchor="mm", sdx=3, sdy=3):
     x, y = xy
-    draw.text((x+offset, y+offset), text, font=font, fill=shadow, anchor=anchor)
-    draw.text(xy, text, font=font, fill=fill, anchor=anchor)
+    if shadow_col:
+        draw.text((x+sdx, y+sdy), text, font=fnt, fill=shadow_col, anchor=anchor)
+    draw.text(xy, text, font=fnt, fill=fill, anchor=anchor)
 
 
-def pill(draw, cx, cy, text, font, bg, fg, px=32, py=14):
-    """Rounded pill badge."""
+def pill_btn(draw, cx, cy, text, fnt, bg, fg, rx=18, py_pad=16, px_pad=36):
     try:
-        bb = draw.textbbox((0,0), text, font=font)
+        bb = draw.textbbox((0,0), text, font=fnt)
         tw, th = bb[2]-bb[0], bb[3]-bb[1]
-        x0, y0 = cx-tw//2-px, cy-th//2-py
-        x1, y1 = cx+tw//2+px, cy+th//2+py
-        draw.rounded_rectangle([x0+3, y0+3, x1+3, y1+3], radius=40, fill=(0,0,0))
-        draw.rounded_rectangle([x0, y0, x1, y1], radius=40, fill=bg)
-        draw.text((cx, cy), text, font=font, fill=fg, anchor="mm")
+        x0, y0 = cx-tw//2-px_pad, cy-th//2-py_pad
+        x1, y1 = cx+tw//2+px_pad, cy+th//2+py_pad
+        draw.rounded_rectangle([x0+4, y0+4, x1+4, y1+4], radius=rx, fill=(0,0,0))
+        draw.rounded_rectangle([x0, y0, x1, y1], radius=rx, fill=bg)
+        draw.text((cx, cy), text, font=fnt, fill=fg, anchor="mm")
         return y1
     except Exception:
-        return cy + 55
+        return cy + 60
 
 
-def glow_rect(draw, x0, y0, x1, y1, color, radius=16):
-    for off in [8, 5, 2]:
-        c = tuple(max(0, v * off // 9) for v in color[:3])
+def glow_border(draw, x0, y0, x1, y1, col, r=18):
+    for off in [9, 6, 3, 1]:
+        c = tuple(max(0, v*off//9) for v in col)
         draw.rounded_rectangle([x0-off, y0-off, x1+off, y1+off],
-                                radius=radius+off, outline=c, width=2)
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=radius, outline=color, width=3)
+                                radius=r+off, outline=c, width=2)
+    draw.rounded_rectangle([x0, y0, x1, y1], radius=r, outline=col, width=3)
+
+
+def new_canvas():
+    img  = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
+    vgrad(draw, 0, 0, W, H, (12,12,20), (5,5,12))
+    return img, draw
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# IMAGE DOWNLOAD — with proxy fallback to bypass Amazon CDN blocks
+# IMAGE DOWNLOAD — 3-layer fallback
 # ═══════════════════════════════════════════════════════════════════════════════
-IMG_HEADERS = {
+IMG_HDR = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-    "Accept-Language": "en-IN,en;q=0.9",
+    "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
     "Referer": "https://www.amazon.in/",
-    "sec-fetch-dest": "image",
-    "sec-fetch-mode": "no-cors",
-    "sec-fetch-site": "cross-site",
 }
 
 
-def _url_variants(url):
-    """Generate alternate size variants of an Amazon image URL."""
-    variants = [url]
-    # Strip size modifier and try clean URL
+def _img_variants(url):
     import re
+    vs = [url]
     clean = re.sub(r'\._[A-Z]{2,3}\d*_\.', '.', url)
-    if clean != url:
-        variants.append(clean)
-    # Common size replacements
-    for size in ["_SL1000_", "_SL800_", "_AC_SX522_", "_AC_"]:
-        v = re.sub(r'_S[LX]\d+_', size, url)
-        variants.append(v)
-    return list(dict.fromkeys(variants))   # deduplicate, preserve order
+    if clean != url: vs.append(clean)
+    for sz in ["_SL1000_", "_SL800_", "_AC_SX522_"]:
+        vs.append(re.sub(r'_S[LX]\d+_', sz, url))
+    return list(dict.fromkeys(vs))
 
 
-def download_product_image(image_url):
-    """
-    Download product image with three strategies:
-    1. Direct download with browser headers
-    2. images.weserv.nl image proxy (bypasses IP blocks)
-    3. Return None → caller creates placeholder
-    """
+def fetch_image(image_url):
     if not image_url:
         return None
-
-    # Strategy 1 — direct with browser headers + variant URLs
-    for url in _url_variants(image_url):
+    # Layer 1 — direct
+    for url in _img_variants(image_url):
         try:
-            r = requests.get(url, headers=IMG_HEADERS, timeout=20)
-            if r.status_code == 200 and len(r.content) > 3000:
+            r = requests.get(url, headers=IMG_HDR, timeout=20)
+            if r.status_code == 200 and len(r.content) > 3_000:
                 img = Image.open(io.BytesIO(r.content)).convert("RGBA")
-                print(f"[IMAGE] Direct download OK ({len(r.content)//1024} KB)")
+                print(f"[IMG] Direct OK ({len(r.content)//1024}KB)")
                 return img
-        except Exception as e:
-            print(f"[IMAGE] Direct fail: {e}")
-
-    # Strategy 2 — image proxy (weserv.nl)
+        except Exception: pass
+    # Layer 2 — weserv proxy
     try:
-        # weserv.nl accepts URL without the protocol prefix
-        stripped = image_url.replace("https://", "").replace("http://", "")
-        proxy_url = f"https://images.weserv.nl/?url={urllib.parse.quote(stripped, safe='')}&w=1000&output=jpg"
-        r = requests.get(proxy_url, timeout=25,
-                         headers={"User-Agent": "Mozilla/5.0"})
-        if r.status_code == 200 and len(r.content) > 3000:
+        stripped = image_url.replace("https://","").replace("http://","")
+        proxy = f"https://images.weserv.nl/?url={urllib.parse.quote(stripped,safe='')}&w=900&output=png"
+        r = requests.get(proxy, timeout=25, headers={"User-Agent":"Mozilla/5.0"})
+        if r.status_code == 200 and len(r.content) > 3_000:
             img = Image.open(io.BytesIO(r.content)).convert("RGBA")
-            print(f"[IMAGE] Proxy download OK ({len(r.content)//1024} KB)")
+            print(f"[IMG] Proxy OK ({len(r.content)//1024}KB)")
             return img
     except Exception as e:
-        print(f"[IMAGE] Proxy fail: {e}")
-
-    print("[IMAGE] All download attempts failed — will use placeholder")
+        print(f"[IMG] Proxy fail: {e}")
+    print("[IMG] All failed — placeholder")
     return None
 
 
 def make_placeholder(title):
-    """Create a stylised product image placeholder."""
-    img = Image.new("RGB", (900, 700), (25, 25, 40))
+    img  = Image.new("RGB", (900, 700), (20, 20, 36))
     draw = ImageDraw.Draw(img)
-    # Gradient bg
-    grad_rect(draw, 0, 0, 900, 700, (30, 20, 60), (15, 10, 35))
-    # Box outline
-    draw.rounded_rectangle([30, 30, 870, 670], radius=30,
-                            outline=C_ORANGE, width=4)
-    # Emoji icon
-    f_big = load_font(120, bold=True)
-    draw.text((450, 280), "🛍️", font=f_big, fill=C_ORANGE, anchor="mm")
-    # Title text (wrapped)
-    f_title = load_font(36)
-    words = textwrap.wrap(title[:80], width=22)
-    y = 400
-    for line in words[:3]:
-        draw.text((450, y), line, font=f_title, fill=C_WHITE, anchor="mm")
-        y += 50
+    vgrad(draw, 0, 0, 900, 700, (30,20,55), (12,8,28))
+    draw.rounded_rectangle([28,28,872,672], radius=30, outline=ORANGE, width=4)
+    f = font(90, bold=True)
+    draw.text((450,250), "🛍️", font=f, fill=ORANGE, anchor="mm")
+    f2 = font(36)
+    for i, line in enumerate(textwrap.wrap(title[:60], 20)[:3]):
+        draw.text((450, 370+i*52), line, font=f2, fill=WHITE, anchor="mm")
     return img.convert("RGBA")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FRAME BUILDER  —  Professional Amazon-ad style
+# SCENE 1 — HOOK (black bg, orange deal alert)
 # ═══════════════════════════════════════════════════════════════════════════════
-#
-#  Layout (1920px tall):
-#   0 – 110   : Top banner  (orange gradient)
-#  110 – 980  : Product image  [870px — 45% of frame]
-#  980 – 1220 : WHY BUY features  [4 pills × 60px]
-# 1220 – 1450 : Price + discount section
-# 1450 – 1720 : Link + CTA
-# 1720 – 1920 : Footer / subscribe strip
+def scene_hook():
+    img  = Image.new("RGB", (W, H), (6, 6, 10))
+    draw = ImageDraw.Draw(img)
 
-def build_frame(title, price, discount, prod_img_pil,
-                short_link, features=None, rating=None, reviews=None):
-    canvas = Image.new("RGB", (W, H), C_BLACK)
-    draw   = ImageDraw.Draw(canvas)
+    # Background radial glow
+    for r in range(500, 0, -50):
+        alpha = int(25 * (500-r) / 500)
+        c = (min(255, ORANGE[0]*alpha//25),
+             min(255, ORANGE[1]*alpha//40), 0)
+        draw.ellipse([W//2-r, H//2-r-200, W//2+r, H//2+r-200], fill=c)
 
-    # ── Full background ───────────────────────────────────────────────────
-    grad_rect(draw, 0, 0, W, H, (12, 12, 20), (6, 6, 14))
+    # Top thin orange accent line
+    draw.rectangle([0, 0, W, 6], fill=ORANGE)
+    draw.rectangle([0, H-6, W, H], fill=ORANGE)
 
-    # Subtle diagonal lines texture
-    for i in range(0, W+H, 55):
-        draw.line([(i, 0), (0, i)], fill=(20, 20, 35), width=1)
+    # HOT DEAL ALERT — giant text
+    f1 = font(88, bold=True)
+    txt(draw, (W//2, 760), "🔥 HOT DEAL", f1, WHITE, ORANGE, sdx=5, sdy=5)
+    txt(draw, (W//2, 870), "ALERT!  🔥", f1, ORANGE, (100,50,0), sdx=5, sdy=5)
 
-    # ── TOP BANNER ────────────────────────────────────────────────────────
-    grad_rect(draw, 0, 0, W, 112, (200, 80, 0), (230, 120, 0))
-    draw.rectangle([0, 0, W, 4], fill=C_GOLD)
-    draw.rectangle([0, 108, W, 112], fill=C_GOLD)
+    # Subtext
+    f2 = font(50)
+    txt(draw, (W//2, 990), "Amazon India Bestseller", f2, GREY, shadow_col=None)
 
-    f_brand = load_font(44, bold=True)
-    shadow_text(draw, (W//2, 56),
-                "🔥  BAZAAR BUDDY LOOT DEALS  🔥",
-                f_brand, C_WHITE, (80, 30, 0), offset=3)
+    f3 = font(40)
+    txt(draw, (W//2, 1060), "Exclusive Deal — Limited Time Only!", f3, (200,200,200), shadow_col=None)
 
-    # ── PRODUCT IMAGE ZONE (110–980) ──────────────────────────────────────
-    IMG_Y0, IMG_Y1 = 112, 980
-    IMG_W = W - 40       # near full width
-    IMG_H = IMG_Y1 - IMG_Y0 - 10
+    # Bottom branding
+    draw.rectangle([0, H-120, W, H-116], fill=ORANGE)
+    fb = font(32, bold=True)
+    txt(draw, (W//2, H-82), "🔔 SUBSCRIBE ▸ @BazaarBuddyLootDeals", fb, GOLD, shadow_col=None)
+    txt(draw, (W//2, H-44), "📢 t.me/BazaarBuddyLootDeals  •  ❤️ @bazaarbuddylootdeals", font(26), GREY, shadow_col=None)
 
-    # White card background
-    card_x0 = (W - IMG_W) // 2
-    card_y0 = IMG_Y0 + 5
-    draw.rounded_rectangle([card_x0, card_y0, card_x0+IMG_W, card_y0+IMG_H],
-                            radius=22, fill=(250, 250, 255))
+    return img
 
-    # Product image — fill card
-    prod = prod_img_pil or make_placeholder(title)
-    # Scale to fill card keeping aspect ratio
-    prod_rgb = prod.convert("RGBA")
-    prod_rgb.thumbnail((IMG_W - 40, IMG_H - 40), Image.LANCZOS)
 
-    px = card_x0 + (IMG_W - prod_rgb.width) // 2
-    py = card_y0 + (IMG_H - prod_rgb.height) // 2
+# ═══════════════════════════════════════════════════════════════════════════════
+# SCENE 2 — PRODUCT (full-screen product image + title + rating)
+# ═══════════════════════════════════════════════════════════════════════════════
+def scene_product(title, prod_img_pil, rating, reviews):
+    img  = Image.new("RGB", (W, H), DARK)
+    draw = ImageDraw.Draw(img)
+    vgrad(draw, 0, 0, W, H, (14,14,24), (8,8,16))
 
-    # White canvas under image (handles transparent PNGs)
-    bg_layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    bg_layer.paste(prod_rgb, (px, py), mask=prod_rgb)
-    canvas = Image.alpha_composite(canvas.convert("RGBA"), bg_layer).convert("RGB")
-    draw   = ImageDraw.Draw(canvas)
+    # Top label
+    draw.rectangle([0, 0, W, 100], fill=(18,18,30))
+    draw.rectangle([0, 96, W, 100], fill=ORANGE)
+    ft = font(38, bold=True)
+    txt(draw, (W//2, 50), "🛍️  PRODUCT SHOWCASE", ft, WHITE, shadow_col=None)
 
-    # Orange glow border around card
-    glow_rect(draw, card_x0, card_y0, card_x0+IMG_W, card_y0+IMG_H,
-              C_ORANGE, radius=22)
+    # ─── Product image card (large, centered) ──────────────────────────
+    CARD_X0, CARD_Y0 = 30, 110
+    CARD_X1, CARD_Y1 = W-30, 1300
+    CARD_W  = CARD_X1 - CARD_X0
+    CARD_H  = CARD_Y1 - CARD_Y0
 
-    # DEAL badge (top-right of card)
-    if discount:
-        f_badge = load_font(30, bold=True)
-        pill(draw, W - 70, IMG_Y0 + 46,
-             f"🏷 {discount} OFF", f_badge, C_RED, C_WHITE, px=20, py=10)
+    # White card bg
+    draw.rounded_rectangle([CARD_X0, CARD_Y0, CARD_X1, CARD_Y1],
+                            radius=24, fill=(252, 252, 255))
+    glow_border(draw, CARD_X0, CARD_Y0, CARD_X1, CARD_Y1, ORANGE, r=24)
 
-    # Rating stars (top-left of card)
+    # Paste product image
+    prod = (prod_img_pil or make_placeholder(title)).convert("RGBA")
+    prod.thumbnail((CARD_W-60, CARD_H-60), Image.LANCZOS)
+    px = CARD_X0 + (CARD_W - prod.width) // 2
+    py = CARD_Y0 + (CARD_H - prod.height) // 2
+
+    # Alpha composite product onto canvas
+    overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+    overlay.paste(prod, (px, py), mask=prod)
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    # ─── Info below card ───────────────────────────────────────────────
+    y = CARD_Y1 + 18
+
+    # Title (2 lines max)
+    f_title = font(42, bold=True)
+    wrapped = textwrap.wrap(title[:100], width=24)
+    for line in wrapped[:2]:
+        txt(draw, (W//2, y+26), line, f_title, WHITE, sdx=2, sdy=2)
+        y += 60
+    y += 10
+
+    # Star rating
     if rating:
         try:
             stars = min(5, max(0, int(float(rating))))
-            star_str = "★" * stars + "☆" * (5-stars) + f"  {rating}"
-            f_star = load_font(28, bold=True)
-            draw.rounded_rectangle([card_x0+10, card_y0+10,
-                                    card_x0+10+230, card_y0+10+44],
-                                    radius=8, fill=(255, 200, 0))
-            draw.text((card_x0+22, card_y0+16), star_str,
-                      font=f_star, fill=(20,20,20))
+            star_str = "★" * stars + "☆" * (5-stars)
+            f_star = font(40, bold=True)
+            txt(draw, (W//2, y+26), f"{star_str}  {rating}/5", f_star, GOLD,
+                shadow_col=(60,50,0), sdx=2, sdy=2)
+            if reviews:
+                txt(draw, (W//2, y+72), f"({reviews} Reviews) • Amazon India",
+                    font(28), GREY, shadow_col=None)
+            y += 100
         except Exception:
             pass
 
-    # ── WHY BUY — Feature pills (980–1220) ───────────────────────────────
-    FEAT_Y0 = 988
-    feat_icons = ["⚡", "✅", "🔥", "💡"]
-    if features:
-        f_feat = load_font(28)
-        fy = FEAT_Y0
-        for i, feat in enumerate(features[:4]):
-            icon = feat_icons[i % 4]
-            # Pill background
-            draw.rounded_rectangle([14, fy, W-14, fy+50],
-                                    radius=14, fill=(24, 24, 40))
-            # Left accent
-            draw.rounded_rectangle([14, fy, 20, fy+50],
-                                    radius=4, fill=C_ORANGE)
-            draw.text((44, fy+12), f"{icon}  {feat}",
-                      font=f_feat, fill=C_WHITE)
-            fy += 56
-        PRICE_Y0 = fy + 8
-    else:
-        PRICE_Y0 = FEAT_Y0
+    # AMAZON verified badge
+    pill_btn(draw, W//2, y+36, "✅  Amazon India Verified Deal",
+             font(30, bold=True), GREEN, WHITE)
 
-    # ── PRICE + DISCOUNT (dynamic Y) ─────────────────────────────────────
-    draw.rectangle([0, PRICE_Y0, W, PRICE_Y0+3], fill=C_ORANGE)
-    y = PRICE_Y0 + 16
+    # Footer
+    draw.rectangle([0, H-90, W, H], fill=(10,10,18))
+    txt(draw, (W//2, H-46), "🔔 SUBSCRIBE  ▸  @BazaarBuddyLootDeals  ▸  Daily Deals",
+        font(28, bold=True), GOLD, shadow_col=None)
 
-    # Product title
-    f_title = load_font(38, bold=True)
-    wrapped = textwrap.wrap(title[:140], width=26)
-    for line in wrapped[:2]:
-        shadow_text(draw, (W//2, y+22), line, f_title, C_WHITE, offset=2)
-        y += 52
-    y += 8
+    return img
 
-    # Price in big gold
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SCENE 3 — FEATURES (WHY BUY section)
+# ═══════════════════════════════════════════════════════════════════════════════
+def scene_features(title, features, prod_img_pil):
+    img  = Image.new("RGB", (W, H), (10, 10, 18))
+    draw = ImageDraw.Draw(img)
+    vgrad(draw, 0, 0, W, H, (14,10,28), (8,6,16))
+
+    # Top bar
+    draw.rectangle([0, 0, W, 110], fill=(20,14,42))
+    draw.rectangle([0, 106, W, 110], fill=ORANGE)
+    txt(draw, (W//2, 55), "💡  WHY BUY THIS?", font(46, bold=True), WHITE,
+        shadow_col=ORANGE, sdx=3, sdy=3)
+
+    # Small product thumbnail on right
+    if prod_img_pil:
+        try:
+            thumb = prod_img_pil.copy().convert("RGBA")
+            thumb.thumbnail((280, 280), Image.LANCZOS)
+            thumb_bg = Image.new("RGB", (thumb.width+16, thumb.height+16), WHITE)
+            img_rgba = img.convert("RGBA")
+            overlay  = Image.new("RGBA", (W, H), (0,0,0,0))
+            tx = W - thumb.width - 24 - 8
+            ty = 122
+            thumb_full = Image.new("RGBA", (thumb.width+16, thumb.height+16), (255,255,255,255))
+            thumb_full.paste(thumb, (8,8), mask=thumb)
+            overlay.paste(thumb_full, (tx-8, ty-8))
+            img = Image.alpha_composite(img_rgba, overlay).convert("RGB")
+            draw = ImageDraw.Draw(img)
+            # Orange border around thumb
+            draw.rounded_rectangle([tx-10, ty-10, tx+thumb.width+10, ty+thumb.height+10],
+                                    radius=12, outline=ORANGE, width=3)
+        except Exception:
+            pass
+
+    # Feature bullets — big, high contrast, easy to read
+    feat_list = features[:4] if features else [
+        "Premium quality build",
+        "Easy to use & setup",
+        "Trusted by thousands",
+        "Best value for money",
+    ]
+
+    icons    = ["⚡", "✅", "🔥", "💡"]
+    icon_col = [ORANGE, GREEN, RED, GOLD]
+    fy = 430
+    f_feat = font(38, bold=True)
+    f_desc = font(30)
+
+    for i, feat in enumerate(feat_list):
+        icon = icons[i % 4]
+        ic   = icon_col[i % 4]
+        # Row background
+        draw.rounded_rectangle([20, fy, W-20, fy+88], radius=18,
+                                fill=(20, 18, 38))
+        draw.rounded_rectangle([20, fy, W-20, fy+88], radius=18,
+                                outline=ic, width=2)
+        # Left color bar
+        draw.rounded_rectangle([20, fy, 28, fy+88], radius=6, fill=ic)
+        # Icon
+        draw.text((70, fy+20), icon, font=font(44, bold=True), fill=ic)
+        # Feature text (up to 2 lines)
+        lines = textwrap.wrap(feat, width=28)
+        if len(lines) == 1:
+            txt(draw, (W//2+20, fy+44), lines[0], f_feat, WHITE, shadow_col=None)
+        else:
+            txt(draw, (W//2+20, fy+26), lines[0], f_desc, WHITE, shadow_col=None)
+            txt(draw, (W//2+20, fy+62), lines[1][:35], f_desc, GREY, shadow_col=None)
+        fy += 104
+
+    # Bottom: product name reminder
+    y = fy + 20
+    draw.rectangle([0, y, W, y+3], fill=ORANGE)
+    txt(draw, (W//2, y+44), title[:55], font(34, bold=True), ORANGE, shadow_col=None)
+
+    # Footer
+    draw.rectangle([0, H-90, W, H], fill=(10,10,18))
+    txt(draw, (W//2, H-46), "🔔 SUBSCRIBE  ▸  @BazaarBuddyLootDeals  ▸  Daily Deals",
+        font(28, bold=True), GOLD, shadow_col=None)
+
+    return img
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SCENE 4 — PRICE + CTA
+# ═══════════════════════════════════════════════════════════════════════════════
+def scene_cta(title, price, discount, short_link):
+    img  = Image.new("RGB", (W, H), (8, 6, 14))
+    draw = ImageDraw.Draw(img)
+    vgrad(draw, 0, 0, W, H, (16, 8, 6), (8, 4, 4))
+
+    # Top full-width orange bar
+    vgrad(draw, 0, 0, W, 120, (220, 100, 0), (255, 153, 0))
+    txt(draw, (W//2, 60), "💰  GRAB THE DEAL!", font(50, bold=True), WHITE,
+        shadow_col=(80,30,0), sdx=4, sdy=4)
+
+    # Divider
+    draw.rectangle([0, 120, W, 126], fill=GOLD)
+
+    # Price — HUGE
+    y = 200
     if price:
-        f_price = load_font(66, bold=True)
-        shadow_text(draw, (W//2, y+36), f"💰 {price}",
-                    f_price, C_GOLD, (60, 50, 0), offset=4)
-        y += 84
+        f_price = font(110, bold=True)
+        txt(draw, (W//2, y+60), price, f_price, GOLD,
+            shadow_col=(80,60,0), sdx=6, sdy=6)
+        y += 140
 
-    # Discount pill
+    # Discount badge
     if discount:
-        f_disc = load_font(44, bold=True)
-        y = pill(draw, W//2, y+36,
-                 f"🔥 {discount} OFF — LIMITED TIME!",
-                 f_disc, C_RED, C_WHITE) + 16
+        y = pill_btn(draw, W//2, y+50,
+                     f"🏷️  {discount} OFF  —  LIMITED OFFER!",
+                     font(48, bold=True), RED, WHITE) + 30
 
-    # Reviews line
-    if rating and reviews:
-        f_rev = load_font(28)
-        draw.text((W//2, y+16),
-                  f"⭐ {rating}/5   •   {reviews} Reviews   •   Amazon India",
-                  font=f_rev, fill=C_GREY, anchor="mm")
-        y += 44
-
-    # ── LINK + CTA ────────────────────────────────────────────────────────
-    link_y = max(y + 20, H - 330)
+    # Delivery + rating quick-stats
+    stats = [("🚚", "Free Delivery"), ("⭐", "Top Rated"), ("✅", "Amazon Verified")]
+    sx = W // (len(stats) + 1)
+    for i, (icon, label) in enumerate(stats):
+        cx = sx * (i+1)
+        draw.rounded_rectangle([cx-90, y, cx+90, y+90], radius=14, fill=(22,18,40))
+        draw.rounded_rectangle([cx-90, y, cx+90, y+90], radius=14, outline=ORANGE, width=2)
+        draw.text((cx, y+28), icon, font=font(32), fill=ORANGE, anchor="mm")
+        draw.text((cx, y+66), label, font=font(22, bold=True), fill=WHITE, anchor="mm")
+    y += 110
 
     # Link box
-    draw.rounded_rectangle([24, link_y, W-24, link_y+56],
-                            radius=16, fill=(0, 28, 68))
-    draw.rounded_rectangle([24, link_y, W-24, link_y+56],
-                            radius=16, outline=C_CYAN, width=2)
-    f_link = load_font(34)
-    shadow_text(draw, (W//2, link_y+28), f"🛒  {short_link}",
-                f_link, C_CYAN, offset=2)
+    y += 20
+    draw.rounded_rectangle([24, y, W-24, y+64], radius=16, fill=(0,24,60))
+    draw.rounded_rectangle([24, y, W-24, y+64], radius=16, outline=CYAN, width=3)
+    txt(draw, (W//2, y+32), f"🛒  {short_link}", font(36), CYAN, shadow_col=None)
+    y += 84
 
-    # CTA button
-    f_cta = load_font(46, bold=True)
-    pill(draw, W//2, link_y+110,
-         "👆  TAP LINK TO BUY NOW  👆",
-         f_cta, C_ORANGE, C_WHITE)
+    # BUY NOW button
+    y = pill_btn(draw, W//2, y+40,
+                 "👆  TAP LINK — BUY NOW  👆",
+                 font(50, bold=True), ORANGE, WHITE, rx=28) + 30
 
-    # ── FOOTER STRIP ─────────────────────────────────────────────────────
-    FT = H - 148
-    draw.rectangle([0, FT, W, H], fill=(14, 14, 24))
-    draw.rectangle([0, FT, W, FT+3], fill=C_ORANGE)
+    # Product title reminder
+    draw.rectangle([0, y+10, W, y+13], fill=(60,40,0))
+    txt(draw, (W//2, y+44), title[:52], font(32, bold=True), ORANGE, shadow_col=None)
 
-    f_sub = load_font(26, bold=True)
-    f_fol = load_font(22)
-    shadow_text(draw, (W//2, FT+28),
-                "🔔 SUBSCRIBE  ▸  YouTube: @BazaarBuddyLootDeals",
-                f_sub, C_GOLD, offset=2)
-    shadow_text(draw, (W//2, FT+62),
-                "❤️ Instagram: @bazaarbuddylootdeals  •  📢 t.me/BazaarBuddyLootDeals",
-                f_fol, C_CYAN, offset=1)
-    shadow_text(draw, (W//2, FT+96),
-                "🛍️ Best Amazon India Deals  •  Daily  •  100% Free",
-                f_fol, (200, 200, 220), offset=1)
-    shadow_text(draw, (W//2, FT+126),
-                "Amazon India Affiliate | dattatrey07-21",
-                load_font(18), (100,100,110), offset=1)
+    # Footer strip
+    draw.rectangle([0, H-148, W, H], fill=(10,10,18))
+    draw.rectangle([0, H-148, W, H-145], fill=ORANGE)
+    txt(draw, (W//2, H-114), "🔔 SUBSCRIBE  ▸  YouTube: @BazaarBuddyLootDeals",
+        font(30, bold=True), GOLD, shadow_col=None)
+    txt(draw, (W//2, H-76), "❤️ Instagram: @bazaarbuddylootdeals  •  📢 t.me/BazaarBuddyLootDeals",
+        font(24), CYAN, shadow_col=None)
+    txt(draw, (W//2, H-40), "🛍️ Best Amazon India Deals — Daily — 100% Free",
+        font(22), GREY, shadow_col=None)
 
-    return canvas
+    return img
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ELEVENLABS VOICEOVER
-# ═══════════════════════════════════════════════════════════════════════════════
-EL_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"   # "Bella" — clear female voice
-
-def build_voiceover_script(title, price, discount, features):
-    """15-second voiceover script for the reel."""
-    feat_line = ""
-    if features:
-        feat_line = ". ".join(features[:2]) + "."
-
-    disc_line = f"Get {discount} off!" if discount else "At an amazing price!"
-    price_line = f"Just {price} on Amazon India!" if price else "Available on Amazon India!"
-
-    script = (
-        f"Amazon deal alert! {title[:50]}. "
-        f"{disc_line} {price_line} "
-        f"{feat_line} "
-        f"Tap the link to buy now. Subscribe for daily deals!"
-    )
-    return script[:400]
-
-
-def generate_voiceover(script):
-    """Call ElevenLabs TTS API. Returns mp3 path or None."""
-    if not ELEVENLABS_API_KEY:
-        print("[VO] No ElevenLabs API key — skipping voiceover")
-        return None
-    try:
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{EL_VOICE_ID}"
-        headers = {
-            "xi-api-key": ELEVENLABS_API_KEY,
-            "Content-Type": "application/json",
-            "Accept": "audio/mpeg",
-        }
-        payload = {
-            "text": script,
-            "model_id": "eleven_multilingual_v2",
-            "voice_settings": {
-                "stability": 0.55,
-                "similarity_boost": 0.80,
-                "style": 0.20,
-                "use_speaker_boost": True,
-            },
-        }
-        r = requests.post(url, json=payload, headers=headers, timeout=40)
-        if r.status_code == 200 and len(r.content) > 2000:
-            p = tempfile.mktemp(suffix=".mp3")
-            with open(p, "wb") as f:
-                f.write(r.content)
-            print(f"[VO] ElevenLabs voiceover OK ({len(r.content)//1024} KB)")
-            return p
-        print(f"[VO] ElevenLabs error {r.status_code}: {r.text[:200]}")
-    except Exception as e:
-        print(f"[VO] ElevenLabs exception: {e}")
-    return None
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# MUSIC
+# MUSIC + AUDIO
 # ═══════════════════════════════════════════════════════════════════════════════
 MUSIC_URLS = [
     "https://cdn.pixabay.com/download/audio/2023/10/26/audio_e2062a7f17.mp3",
@@ -483,275 +483,321 @@ MUSIC_URLS = [
     "https://cdn.pixabay.com/download/audio/2023/01/11/audio_84e5f3afe3.mp3",
     "https://cdn.pixabay.com/download/audio/2022/12/07/audio_95b85c6a12.mp3",
     "https://cdn.pixabay.com/download/audio/2021/11/15/audio_e7b7b0d6db.mp3",
-    "https://cdn.pixabay.com/download/audio/2023/03/07/audio_84f18efaf6.mp3",
-    "https://cdn.pixabay.com/download/audio/2022/03/24/audio_6bca92e5d4.mp3",
 ]
 
 
-def download_music():
-    order = random.sample(MUSIC_URLS, len(MUSIC_URLS))
+def get_music():
+    random.shuffle(MUSIC_URLS)
     p = tempfile.mktemp(suffix=".mp3")
-    for url in order:
+    for url in MUSIC_URLS:
         try:
-            r = requests.get(url, timeout=22,
-                             headers={"User-Agent": "Mozilla/5.0"})
+            r = requests.get(url, timeout=22, headers={"User-Agent":"Mozilla/5.0"})
             if r.status_code == 200 and len(r.content) > 15_000:
-                with open(p, "wb") as f:
-                    f.write(r.content)
-                print(f"[MUSIC] OK ({len(r.content)//1024} KB)")
+                with open(p, "wb") as f: f.write(r.content)
+                print(f"[MUSIC] OK ({len(r.content)//1024}KB)")
                 return p
-        except Exception:
-            pass
-    return None
-
-
-def synth_music(duration=22):
+        except Exception: pass
+    # Synth fallback
     out = tempfile.mktemp(suffix=".mp3")
     bpm  = 128
-    beat = 60 / bpm
+    bt   = 60/bpm
     expr = (
-        f"0.18*sin(2*PI*60*t)*exp(-8*mod(t,{beat:.4f}))"
-        f"+0.16*sin(2*PI*110*t)"
-        f"+0.13*sin(2*PI*330*(1+0.012*sin(2*PI*0.5*t))*t)"
-        f"+0.09*sin(2*PI*660*t*((floor(t*2)%2)*0.5+0.75))"
-        f"+0.05*sin(2*PI*1320*t)*sin(2*PI*4*t)"
+        f"0.18*sin(2*PI*60*t)*exp(-8*mod(t,{bt:.4f}))"
+        f"+0.15*sin(2*PI*110*t)"
+        f"+0.12*sin(2*PI*330*(1+0.012*sin(2*PI*0.5*t))*t)"
+        f"+0.08*sin(2*PI*660*t)"
     )
-    cmd = [
-        "ffmpeg", "-y", "-f", "lavfi",
-        "-i", f"aevalsrc='{expr}':s=44100:d={duration}",
-        "-af", (
-            f"afade=t=in:st=0:d=1.5,afade=t=out:st={duration-2}:d=2,"
-            "highpass=f=50,lowpass=f=9000,volume=0.7"
-        ),
-        "-q:a", "4", out,
-    ]
+    cmd = ["ffmpeg","-y","-f","lavfi",
+           "-i",f"aevalsrc='{expr}':s=44100:d={DUR+3}",
+           "-af",f"afade=t=in:st=0:d=2,afade=t=out:st={DUR+1}:d=2,volume=0.6",
+           "-q:a","4", out]
     res = subprocess.run(cmd, capture_output=True, timeout=60)
     return out if res.returncode == 0 else None
 
 
-def gen_ding():
-    """Short cash-register ding SFX."""
-    out = tempfile.mktemp(suffix=".mp3")
-    expr = (
-        "0.5*sin(2*PI*1400*t)*exp(-5*t)"
-        "+0.3*sin(2*PI*1800*t)*exp(-7*t)"
-        "+0.2*sin(2*PI*2200*t)*exp(-10*t)"
-    )
-    cmd = [
-        "ffmpeg", "-y", "-f", "lavfi",
-        "-i", f"aevalsrc='{expr}':s=44100:d=0.8",
-        "-q:a", "5", out,
-    ]
-    res = subprocess.run(cmd, capture_output=True, timeout=30)
-    return out if res.returncode == 0 else None
+# ═══════════════════════════════════════════════════════════════════════════════
+# ELEVENLABS VOICEOVER
+# ═══════════════════════════════════════════════════════════════════════════════
+def get_voiceover(title, price, discount, features):
+    if not ELEVENLABS_API_KEY:
+        return None
+    feat_str = ". ".join((features or [])[:2])
+    disc_str = f"Get {discount} off!" if discount else ""
+    price_str = f"Just {price} on Amazon India!" if price else ""
+    script = (
+        f"Amazon deal alert! {title[:45]}. "
+        f"{disc_str} {price_str} {feat_str} "
+        "Tap the link to buy now. Subscribe for daily deals!"
+    )[:380]
+    try:
+        r = requests.post(
+            "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL",
+            headers={"xi-api-key": ELEVENLABS_API_KEY,
+                     "Content-Type":"application/json","Accept":"audio/mpeg"},
+            json={"text": script, "model_id":"eleven_multilingual_v2",
+                  "voice_settings":{"stability":0.55,"similarity_boost":0.80}},
+            timeout=40,
+        )
+        if r.status_code == 200 and len(r.content) > 2_000:
+            p = tempfile.mktemp(suffix=".mp3")
+            with open(p,"wb") as f: f.write(r.content)
+            print(f"[VO] ElevenLabs OK ({len(r.content)//1024}KB)")
+            return p
+        print(f"[VO] ElevenLabs {r.status_code}: {r.text[:150]}")
+    except Exception as e:
+        print(f"[VO] Exception: {e}")
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# VIDEO RENDERER — animated overlays + Ken Burns zoom
+# VIDEO RENDERER — 4-scene xfade concat
 # ═══════════════════════════════════════════════════════════════════════════════
-def _s(text, n=55):
-    """Sanitise text for ffmpeg drawtext."""
-    return (text or "")[:n].replace("'","").replace('"',"").replace("\\","").replace(":","")
+def _save_scene(img, suffix):
+    p = tempfile.mktemp(suffix=suffix)
+    img.save(p, "PNG", optimize=False)
+    return p
 
 
-def _fade(t0, t1):
-    return f"alpha='if(lt(t,{t0}),0,if(lt(t,{t1}),(t-{t0})/({t1}-{t0}),1))'"
+def _ffrun(cmd, label, timeout=600):
+    print(f"[REEL] {label}...")
+    r = subprocess.run(cmd, capture_output=True, timeout=timeout)
+    if r.returncode != 0:
+        print(f"[REEL] {label} FAIL:", r.stderr.decode()[-600:])
+    return r.returncode == 0
 
 
-def render_video(frame_path, music_path, vo_path, ding_path,
-                 title, price, discount, short_link, dur=DUR):
-    out   = tempfile.mktemp(suffix=".mp4")
-    total = dur * FPS
+def _make_clip(scene_path, duration, zoom_dir="in"):
+    """Turn a static PNG into an animated clip with Ken Burns effect."""
+    out = tempfile.mktemp(suffix=".mp4")
+    total = int(duration * FPS)
+    if zoom_dir == "in":
+        # Zoom 1.0 → 1.08
+        z_expr = f"min(1.0+0.08*on/{total},1.08)"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = "ih/2-(ih/zoom/2)"
+    elif zoom_dir == "out":
+        # Zoom 1.08 → 1.0
+        z_expr = f"max(1.08-0.08*on/{total},1.0)"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = "ih/2-(ih/zoom/2)"
+    else:
+        # Pan right
+        z_expr = "1.05"
+        x_expr = f"(iw-(iw/zoom))*on/{total}"
+        y_expr = "ih/2-(ih/zoom/2)"
 
-    # ── Ken Burns zoom (subtle, 1.0→1.08) ────────────────────────────────
-    zoom_vf = (
-        f"zoompan=z='min(1.0+0.08*on/{total},1.08)'"
-        f":x='iw/2-(iw/zoom/2)'"
-        f":y='ih/2-(ih/zoom/2)'"
+    vf = (
+        f"zoompan=z='{z_expr}'"
+        f":x='{x_expr}':y='{y_expr}'"
         f":d={total}:s={W}x{H}:fps={FPS}"
     )
+    cmd = [
+        "ffmpeg","-y","-loop","1","-i",scene_path,
+        "-vf",vf,
+        "-t",str(duration),
+        "-c:v","libx264","-preset","fast","-crf","18",
+        "-pix_fmt","yuv420p","-r",str(FPS),
+        out,
+    ]
+    ok = _ffrun(cmd, f"clip({zoom_dir} {duration}s)")
+    return out if ok else None
 
-    # No drawtext overlays — all info is already in the poster frame.
-    # Adding ffmpeg text on top creates clutter and double-text artifacts.
-    vf = zoom_vf
 
-    # ── Build audio filter ────────────────────────────────────────────────
-    # Inputs: frame(0), music(1?), vo(2?), ding(3?)
-    inputs = ["-loop", "1", "-i", frame_path]
-    audio_inputs = []
+def _concat_xfade(clips, durations, xfade_dur=XFADE):
+    """Concatenate clips with xfade transitions."""
+    out = tempfile.mktemp(suffix=".mp4")
+
+    transitions = ["fade", "slideleft", "wipeleft", "slideup"]
+
+    if len(clips) == 1:
+        return clips[0]
+
+    # Build filter_complex
+    inputs = []
+    for c in clips:
+        inputs += ["-i", c]
+
+    # Build xfade chain: [v0][v1] → xfade → [x1]; [x1][v2] → xfade → [x2] …
+    parts = []
+    # Offset for each transition = cumulative duration minus overlap
+    cum = 0
+    labels = [f"[v{i}]" for i in range(len(clips))]
+
+    # Rename inputs
+    rename = ""
+    for i in range(len(clips)):
+        rename += f"[{i}:v]copy[v{i}];"
+
+    chain = ""
+    prev_label = "[v0]"
+    for i in range(1, len(clips)):
+        cum += durations[i-1] - xfade_dur
+        ttype = transitions[(i-1) % len(transitions)]
+        out_label = f"[xf{i}]" if i < len(clips)-1 else "[vout]"
+        chain += (
+            f"{prev_label}[v{i}]"
+            f"xfade=transition={ttype}:duration={xfade_dur}:offset={cum:.2f}"
+            f"{out_label};"
+        )
+        prev_label = f"[xf{i}]"
+        cum += xfade_dur  # account for the overlap consumed
+
+    filter_str = rename.rstrip(";") + ";" + chain.rstrip(";")
+
+    cmd = (
+        ["ffmpeg","-y"]
+        + inputs
+        + ["-filter_complex", filter_str,
+           "-map","[vout]",
+           "-t",str(DUR),
+           "-c:v","libx264","-preset","fast","-crf","18",
+           "-pix_fmt","yuv420p","-r",str(FPS),
+           out]
+    )
+    ok = _ffrun(cmd, "xfade concat")
+    return out if ok else None
+
+
+def _add_audio(video_path, music_path, vo_path, dur=DUR):
+    out = tempfile.mktemp(suffix=".mp4")
+
+    if not music_path and not vo_path:
+        return video_path
+
+    inputs = ["-i", video_path]
+    filter_parts = []
+    mix_labels   = []
+    idx = 1
+
     if music_path and os.path.exists(music_path):
-        inputs += ["-i", music_path];  audio_inputs.append("music")
-    if vo_path and os.path.exists(vo_path):
-        inputs += ["-i", vo_path];     audio_inputs.append("vo")
-    if ding_path and os.path.exists(ding_path):
-        inputs += ["-i", ding_path];   audio_inputs.append("ding")
-
-    has_audio = bool(audio_inputs)
-
-    # Build audio mixing chain
-    idx = 1   # input index counter (0=frame)
-    audio_flt_parts = []
-    mix_labels      = []
-
-    if "music" in audio_inputs:
-        audio_flt_parts.append(
+        vol = "0.25" if vo_path else "0.55"
+        filter_parts.append(
             f"[{idx}:a]aloop=loop=-1:size=2e+09,"
             f"atrim=0:{dur},"
-            f"afade=t=in:st=0:d=1.5,afade=t=out:st={dur-2}:d=2,"
-            f"volume={'0.25' if 'vo' in audio_inputs else '0.55'}"
-            f"[music]"
+            f"afade=t=in:st=0:d=1.5,"
+            f"afade=t=out:st={dur-2}:d=2,"
+            f"volume={vol}[music]"
         )
         mix_labels.append("[music]")
+        inputs += ["-i", music_path]
         idx += 1
 
-    if "vo" in audio_inputs:
-        audio_flt_parts.append(
-            f"[{idx}:a]adelay=500|500,volume=1.4[vo]"
-        )
+    if vo_path and os.path.exists(vo_path):
+        filter_parts.append(f"[{idx}:a]adelay=300|300,volume=1.3[vo]")
         mix_labels.append("[vo]")
+        inputs += ["-i", vo_path]
         idx += 1
 
-    if "ding" in audio_inputs:
-        audio_flt_parts.append(
-            f"[{idx}:a]adelay=7000|7000,volume=1.0[ding]"
-        )
-        mix_labels.append("[ding]")
-        idx += 1
+    if not filter_parts:
+        return video_path
 
-    def _run(cmd_args, label):
-        print(f"[REEL] {label}...")
-        r = subprocess.run(cmd_args, capture_output=True, timeout=600)
-        if r.returncode != 0:
-            print(f"[REEL] {label} failed:", r.stderr.decode()[-500:])
-        return r.returncode == 0
-
-    # Attempt 1 — full render
-    if has_audio and mix_labels:
-        n_mix = len(mix_labels)
-        audio_flt = ";".join(audio_flt_parts)
-        if n_mix == 1:
-            audio_flt += f";{mix_labels[0]}acopy[aout]"
-        else:
-            audio_flt += f";{''.join(mix_labels)}amix=inputs={n_mix}:duration=first[aout]"
-
-        cmd1 = [
-            "ffmpeg", "-y",
-        ] + inputs + [
-            "-filter_complex",
-                f"[0:v]{vf}[vout];{audio_flt}",
-            "-map", "[vout]", "-map", "[aout]",
-            "-t", str(dur),
-            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-            "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
-            "-r", str(FPS),
-            "-movflags", "+faststart",
-            out,
-        ]
-        if _run(cmd1, "Full render"):
-            print(f"[REEL] ✅ Video {os.path.getsize(out)//1024} KB")
-            return out
-
-    # Attempt 2 — video only (no audio mixing)
-    out2 = tempfile.mktemp(suffix=".mp4")
-    music_i = inputs[:]
-    # Keep only frame + first music source
-    simple_inputs = ["-loop","1","-i",frame_path]
-    if music_path and os.path.exists(music_path):
-        simple_inputs += ["-i", music_path]
-        cmd2 = [
-            "ffmpeg", "-y",
-        ] + simple_inputs + [
-            "-filter_complex",
-                f"[0:v]{vf}[vout];"
-                f"[1:a]aloop=loop=-1:size=2e+09,atrim=0:{dur},"
-                f"afade=t=in:st=0:d=1,afade=t=out:st={dur-1}:d=1,"
-                f"volume=0.5[aout]",
-            "-map","[vout]","-map","[aout]",
-            "-t",str(dur),
-            "-c:v","libx264","-preset","fast","-crf","20",
-            "-pix_fmt","yuv420p",
-            "-c:a","aac","-b:a","128k","-ar","48000",
-            "-r",str(FPS),"-movflags","+faststart",
-            out2,
-        ]
+    if len(mix_labels) == 1:
+        filter_str = ";".join(filter_parts) + f";{mix_labels[0]}acopy[aout]"
     else:
-        cmd2 = [
-            "ffmpeg", "-y",
-            "-loop","1","-i",frame_path,
-            "-filter_complex",f"[0:v]{vf}[vout]",
-            "-map","[vout]",
-            "-t",str(dur),
-            "-c:v","libx264","-preset","fast","-crf","20",
-            "-pix_fmt","yuv420p",
-            "-r",str(FPS),"-movflags","+faststart",
-            out2,
-        ]
-    if _run(cmd2, "Simple render"):
-        return out2
+        filter_str = (";".join(filter_parts)
+                      + f";{''.join(mix_labels)}amix=inputs={len(mix_labels)}"
+                      f":duration=first[aout]")
 
-    # Attempt 3 — absolute minimum (static image as video)
-    out3 = tempfile.mktemp(suffix=".mp4")
-    cmd3 = [
-        "ffmpeg", "-y",
-        "-loop","1","-i",frame_path,
-        "-t",str(dur),
-        "-vf",f"scale={W}:{H},setsar=1",
-        "-c:v","libx264","-preset","ultrafast","-crf","22",
-        "-pix_fmt","yuv420p","-r",str(FPS),
-        "-movflags","+faststart",
-        out3,
-    ]
-    if _run(cmd3, "Ultra-simple render"):
-        return out3
-
-    print("[REEL] All render attempts failed!")
-    return None
+    cmd = (
+        ["ffmpeg","-y"]
+        + inputs
+        + ["-filter_complex", filter_str,
+           "-map","0:v","-map","[aout]",
+           "-t",str(dur),
+           "-c:v","copy",
+           "-c:a","aac","-b:a","192k","-ar","48000",
+           "-movflags","+faststart",
+           out]
+    )
+    ok = _ffrun(cmd, "audio mix")
+    return out if ok else video_path
 
 
 def create_reel_video(title, price, discount, image_url, short_link,
                        features=None, rating=None, reviews=None):
-    # 1 — Download product image
-    print("[REEL] Downloading product image...")
-    prod_img = download_product_image(image_url)
+    print("[REEL] ── Fetching product image...")
+    prod_img = fetch_image(image_url)
 
-    # 2 — Build static frame
-    print("[REEL] Building poster frame...")
-    frame = build_frame(title, price, discount, prod_img,
-                        short_link, features=features,
-                        rating=rating, reviews=reviews)
-    frame_path = tempfile.mktemp(suffix=".png")
-    frame.save(frame_path, "PNG")
+    # ── Generate 4 scene PNGs ──────────────────────────────────────────
+    print("[REEL] ── Building scene frames...")
+    s1 = _save_scene(scene_hook(),                                     "_s1.png")
+    s2 = _save_scene(scene_product(title, prod_img, rating, reviews),  "_s2.png")
+    s3 = _save_scene(scene_features(title, features or [], prod_img),  "_s3.png")
+    s4 = _save_scene(scene_cta(title, price, discount, short_link),    "_s4.png")
+    scene_paths    = [s1, s2, s3, s4]
+    scene_durations= [S1_DUR, S2_DUR, S3_DUR, S4_DUR]
+    zoom_dirs      = ["in", "out", "pan", "in"]
 
-    # 3 — Generate voiceover
+    # ── Render each scene as animated clip ────────────────────────────
+    print("[REEL] ── Rendering scene clips...")
+    clips = []
+    for i, (sp, dur, zd) in enumerate(zip(scene_paths, scene_durations, zoom_dirs)):
+        clip = _make_clip(sp, dur, zd)
+        if clip:
+            clips.append((clip, dur))
+        else:
+            print(f"[REEL] Scene {i+1} clip failed — using static fallback")
+            # Still add the PNG path so concat can use it
+            fallback = tempfile.mktemp(suffix=".mp4")
+            cmd = ["ffmpeg","-y","-loop","1","-i",sp,
+                   "-t",str(dur),"-c:v","libx264","-preset","ultrafast","-crf","22",
+                   "-pix_fmt","yuv420p","-r",str(FPS),"-vf",f"scale={W}:{H}",fallback]
+            if _ffrun(cmd, f"static clip {i+1}", timeout=120):
+                clips.append((fallback, dur))
+
+    # ── Concat scenes with xfade ──────────────────────────────────────
+    print("[REEL] ── Concatenating scenes with transitions...")
+    video_path = None
+    if len(clips) >= 2:
+        video_path = _concat_xfade([c for c,_ in clips],
+                                    [d for _,d in clips])
+
+    # Fallback: simple concat without xfade
+    if not video_path and clips:
+        print("[REEL] xfade failed — simple concat fallback...")
+        list_file = tempfile.mktemp(suffix=".txt")
+        with open(list_file, "w") as f:
+            for clip_path, _ in clips:
+                f.write(f"file '{clip_path}'\n")
+        out = tempfile.mktemp(suffix=".mp4")
+        cmd = ["ffmpeg","-y","-f","concat","-safe","0","-i",list_file,
+               "-c","copy","-t",str(DUR),out]
+        if _ffrun(cmd, "simple concat", timeout=120):
+            video_path = out
+
+    # Absolute fallback: just use scene 2 (product scene)
+    if not video_path and clips:
+        print("[REEL] Using single scene fallback...")
+        video_path = clips[0][0]
+
+    if not video_path:
+        print("[REEL] ❌ Video render completely failed")
+        return None
+
+    # ── Audio ─────────────────────────────────────────────────────────
+    print("[REEL] ── Getting music...")
+    music_path = get_music()
+
     vo_path = None
     if ELEVENLABS_API_KEY:
-        script = build_voiceover_script(title, price, discount, features)
-        print(f"[REEL] Voiceover script: {script[:80]}...")
-        vo_path = generate_voiceover(script)
+        print("[REEL] ── Generating voiceover...")
+        vo_path = get_voiceover(title, price, discount, features)
 
-    # 4 — Get background music
-    print("[REEL] Getting music...")
-    music_path = download_music() or synth_music(DUR + 2)
+    print("[REEL] ── Mixing audio...")
+    final_path = _add_audio(video_path, music_path, vo_path)
 
-    # 5 — Cash register ding SFX
-    ding_path = gen_ding()
-
-    # 6 — Render video
-    video_path = render_video(
-        frame_path, music_path, vo_path, ding_path,
-        title, price, discount, short_link, dur=DUR,
-    )
-
-    # 7 — Cleanup temp files
-    for p in [frame_path, music_path, vo_path, ding_path]:
+    # ── Cleanup temp files ────────────────────────────────────────────
+    for p in scene_paths + [c for c,_ in clips] + [music_path, vo_path]:
         try:
-            if p and os.path.exists(p):
+            if p and p != final_path and os.path.exists(p):
                 os.unlink(p)
         except Exception:
             pass
 
-    return video_path
+    if final_path and os.path.exists(final_path):
+        kb = os.path.getsize(final_path) // 1024
+        print(f"[REEL] ✅ Final video: {kb} KB")
+    return final_path
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -759,24 +805,18 @@ def create_reel_video(title, price, discount, image_url, short_link,
 # ═══════════════════════════════════════════════════════════════════════════════
 _TAGS = (
     "#Shorts #Reels #AmazonIndia #LootDeals #AmazonDeals #OnlineShopping "
-    "#TechDeals #IndiaDeals #BestDeals #BuyNow #DealAlert #DiscountDeals "
-    "#BazaarBuddy #AmazonSale #FlashSale #DealOfTheDay #SaleAlert "
-    "#ShoppingDeals #GrabNow #AmazonFinds #SaveMoney #AmazonOffer"
+    "#TechDeals #IndiaDeals #BestDeals #BuyNow #DealAlert "
+    "#BazaarBuddy #AmazonSale #FlashSale #DealOfTheDay #SaleAlert"
 )
 
 
-def _feat_block(features):
-    if not features:
-        return ""
-    return "\n\n🎯 Why Buy?\n" + "\n".join(f"  ✅ {f}" for f in features[:4])
-
-
-def build_seo_caption(title, price, discount, rating, reviews, link,
-                       platform="instagram", features=None):
+def build_caption(title, price, discount, rating, reviews, link,
+                   platform="instagram", features=None):
     deal  = f"🔥 {discount} OFF!" if discount else "🔥 Hot Deal!"
-    p_ln  = f"💰 Only {price} on Amazon India" if price else ""
+    p_ln  = f"💰 Only {price}" if price else ""
     r_ln  = f"⭐ {rating}/5 • {reviews} Reviews" if rating and reviews else ""
-    fb    = _feat_block(features)
+    fb    = ("\n\n🎯 Why Buy?\n" + "\n".join(f"  ✅ {f}" for f in (features or [])[:4])
+             if features else "")
 
     if platform == "telegram":
         return (
@@ -785,19 +825,17 @@ def build_seo_caption(title, price, discount, rating, reviews, link,
             + (f"{p_ln}\n" if p_ln else "")
             + (f"{r_ln}\n" if r_ln else "")
             + fb
-            + f"\n\n✅ Amazon India Affiliate Deal\n🔗 {link}\n\n"
-            "📢 Daily deals 👉 https://t.me/BazaarBuddyLootDeals"
+            + f"\n\n✅ Amazon India Affiliate\n🔗 {link}\n\n"
+            "📢 https://t.me/BazaarBuddyLootDeals"
         )
-
     if platform == "youtube":
         return (
-            f"🛒 BUY NOW 👉 {link}\n"
-            f"⬆️ Click above for this Amazon India deal!\n\n"
+            f"🛒 BUY NOW 👉 {link}\n⬆️ Click above!\n\n"
             f"🔥 {title}\n\n{deal}\n"
             + (f"{p_ln}\n" if p_ln else "")
             + (f"{r_ln}\n" if r_ln else "")
             + fb
-            + f"\n\n✅ Amazon India Affiliate Deal (tag: dattatrey07-21)\n\n"
+            + "\n\n✅ Amazon India Affiliate (tag: dattatrey07-21)\n\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "🔔 SUBSCRIBE ▸ https://www.youtube.com/@BazaarBuddyLootDeals\n"
             "📢 Telegram  ▸ https://t.me/BazaarBuddyLootDeals\n"
@@ -805,99 +843,80 @@ def build_seo_caption(title, price, discount, rating, reviews, link,
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             + _TAGS
         )
-
     return (
         f"🛒 BUY NOW 👉 {link}\n\n🔥 {title}\n\n{deal}\n"
         + (f"{p_ln}\n" if p_ln else "")
         + (f"{r_ln}\n" if r_ln else "")
         + fb
         + "\n\n👆 Tap link in caption!\n"
-        "❤️ Follow @bazaarbuddylootdeals for daily deals!\n\n"
-        + _TAGS
+        "❤️ Follow @bazaarbuddylootdeals\n\n" + _TAGS
     )
 
 
-def build_yt_title(title, price, discount):
+def yt_title(title, price, discount):
     disc = f"{discount} OFF | " if discount else ""
     pr   = f" at {price}" if price else ""
-    return f"🔥 {disc}{title[:55]}{pr} | Amazon India Deal #Shorts"[:100]
+    return f"🔥 {disc}{title[:55]}{pr} | Amazon India #Shorts"[:100]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PLATFORM POSTERS
+# PLATFORM POSTING
 # ═══════════════════════════════════════════════════════════════════════════════
 def post_telegram(video_path, caption):
     url = f"https://api.telegram.org/bot{bot.BOT_TOKEN}/sendVideo"
-    with open(video_path, "rb") as f:
+    with open(video_path,"rb") as f:
         r = requests.post(url,
-            data={"chat_id": bot.CHAT_ID, "caption": caption,
-                  "parse_mode": "HTML", "supports_streaming": True},
-            files={"video": ("reel.mp4", f, "video/mp4")},
+            data={"chat_id":bot.CHAT_ID,"caption":caption,
+                  "parse_mode":"HTML","supports_streaming":True},
+            files={"video":("reel.mp4",f,"video/mp4")},
             timeout=180)
     ok = r.status_code == 200
-    if not ok:
-        print("[TG] Error:", r.text[:200])
+    if not ok: print("[TG] Error:", r.text[:200])
     return ok
 
 
 def post_facebook(video_path, desc):
     url = f"https://graph.facebook.com/v21.0/{bot.FB_PAGE_ID}/videos"
-    with open(video_path, "rb") as f:
+    with open(video_path,"rb") as f:
         r = requests.post(url,
-            data={"access_token": bot.FB_PAGE_TOKEN, "description": desc},
-            files={"source": ("reel.mp4", f, "video/mp4")},
+            data={"access_token":bot.FB_PAGE_TOKEN,"description":desc},
+            files={"source":("reel.mp4",f,"video/mp4")},
             timeout=240)
     ok = "id" in r.json()
-    if not ok:
-        print("[FB] Error:", r.json())
+    if not ok: print("[FB] Error:", r.json())
     return ok
 
 
 def post_instagram(video_path, caption):
     token, ig_id = bot.FB_PAGE_TOKEN, bot.IG_USER_ID
-    file_size    = os.path.getsize(video_path)
-
+    fsize = os.path.getsize(video_path)
     r = requests.post(
         f"https://graph.facebook.com/v21.0/{ig_id}/media",
         params={"media_type":"REELS","upload_type":"resumable",
-                "caption":caption,"share_to_feed":"true",
-                "access_token":token},
+                "caption":caption,"share_to_feed":"true","access_token":token},
         timeout=30)
     d = r.json()
-    if "id" not in d:
-        print("[IG] Container error:", d); return False
-    cid = d["id"];  up_url = d.get("uri")
-    if not up_url:
-        print("[IG] No URI"); return False
-
-    with open(video_path,"rb") as f:
-        vb = f.read()
+    if "id" not in d: print("[IG] Container error:", d); return False
+    cid = d["id"]; up_url = d.get("uri")
+    if not up_url: print("[IG] No URI"); return False
+    with open(video_path,"rb") as f: vb = f.read()
     up = requests.post(up_url,
-        headers={"Authorization":f"OAuth {token}",
-                 "offset":"0","file_size":str(file_size)},
+        headers={"Authorization":f"OAuth {token}","offset":"0","file_size":str(fsize)},
         data=vb, timeout=240)
     if up.status_code not in (200,201):
         print("[IG] Upload error:", up.text[:200]); return False
-
     print("[IG] Processing...")
     for i in range(20):
         time.sleep(10)
-        st = requests.get(
-            f"https://graph.facebook.com/v21.0/{cid}",
-            params={"fields":"status_code","access_token":token},
-            timeout=20).json()
+        st = requests.get(f"https://graph.facebook.com/v21.0/{cid}",
+            params={"fields":"status_code","access_token":token},timeout=20).json()
         sc = st.get("status_code","")
         print(f"[IG] {i+1}/20: {sc}")
         if sc == "FINISHED": break
-        if sc == "ERROR":
-            print("[IG] Error:", st); return False
-    else:
-        print("[IG] Timeout"); return False
-
-    pub = requests.post(
-        f"https://graph.facebook.com/v21.0/{ig_id}/media_publish",
-        params={"creation_id":cid,"access_token":token},
-        timeout=30)
+        if sc == "ERROR": print("[IG] Error:", st); return False
+    else: print("[IG] Timeout"); return False
+    pub = requests.post(f"https://graph.facebook.com/v21.0/{ig_id}/media_publish",
+        params={"creation_id":cid,"access_token":token},timeout=30)
     ok = "id" in pub.json()
     if not ok: print("[IG] Publish error:", pub.json())
     return ok
@@ -907,10 +926,8 @@ def get_yt_token():
     if not YOUTUBE_REFRESH_TOKEN: return None
     try:
         r = requests.post("https://oauth2.googleapis.com/token",
-            data={"client_id":YOUTUBE_CLIENT_ID,
-                  "client_secret":YOUTUBE_CLIENT_SECRET,
-                  "refresh_token":YOUTUBE_REFRESH_TOKEN,
-                  "grant_type":"refresh_token"},
+            data={"client_id":YOUTUBE_CLIENT_ID,"client_secret":YOUTUBE_CLIENT_SECRET,
+                  "refresh_token":YOUTUBE_REFRESH_TOKEN,"grant_type":"refresh_token"},
             timeout=20)
         return r.json().get("access_token")
     except Exception as e:
@@ -920,16 +937,15 @@ def get_yt_token():
 def post_youtube(video_path, title, price, discount, affiliate_link,
                   features=None, max_tries=3):
     sl    = bot.shorten_url(bot.clean_affiliate_url(affiliate_link))
-    yt_t  = build_yt_title(title, price, discount)
-    yt_d  = build_seo_caption(title, price, discount, None, None,
-                               sl, platform="youtube", features=features)
-    fsize = os.path.getsize(video_path)
+    title_s = yt_title(title, price, discount)
+    desc    = build_caption(title, price, discount, None, None, sl,
+                             platform="youtube", features=features)
+    fsize   = os.path.getsize(video_path)
 
     for attempt in range(1, max_tries+1):
         print(f"[YT] Upload attempt {attempt}/{max_tries}")
         tok = get_yt_token()
-        if not tok:
-            print("[YT] No token"); return False
+        if not tok: print("[YT] No token"); return False
         try:
             init = requests.post(
                 "https://www.googleapis.com/upload/youtube/v3/videos"
@@ -939,24 +955,20 @@ def post_youtube(video_path, title, price, discount, affiliate_link,
                          "X-Upload-Content-Type":"video/mp4",
                          "X-Upload-Content-Length":str(fsize)},
                 json={
-                    "snippet":{"title":yt_t,"description":yt_d,
+                    "snippet":{"title":title_s,"description":desc,
                                "tags":["AmazonDeals","LootDeals","AmazonIndia",
                                        "Shorts","BazaarBuddy","DealAlert",
-                                       "FlashSale","BuyNow","IndiaDeals",
-                                       "OnlineShopping","ShopNow"],
+                                       "IndiaDeals","OnlineShopping","FlashSale"],
                                "categoryId":"26","defaultLanguage":"en"},
-                    "status":{"privacyStatus":"public",
-                              "selfDeclaredMadeForKids":False}
+                    "status":{"privacyStatus":"public","selfDeclaredMadeForKids":False}
                 },
                 timeout=30)
             if init.status_code not in (200,201):
                 print(f"[YT] Init {init.status_code}:", init.text[:200])
                 time.sleep(8*attempt); continue
             up_url = init.headers.get("Location")
-            if not up_url:
-                time.sleep(5); continue
-            with open(video_path,"rb") as f:
-                vb = f.read()
+            if not up_url: time.sleep(5); continue
+            with open(video_path,"rb") as f: vb = f.read()
             up = requests.put(up_url,
                 headers={"Content-Type":"video/mp4","Content-Length":str(fsize)},
                 data=vb, timeout=360)
@@ -968,49 +980,25 @@ def post_youtube(video_path, title, price, discount, affiliate_link,
             time.sleep(12*attempt)
         except Exception as e:
             print(f"[YT] Exception {attempt}: {e}"); time.sleep(12*attempt)
-
     return False
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# TELEGRAM REPORT
-# ═══════════════════════════════════════════════════════════════════════════════
-def send_report(res, title, price, discount, yt_id):
-    def ic(v): return "✅" if v else "❌"
-    yt_link = f"\n🎬 https://youtube.com/shorts/{yt_id}" if isinstance(yt_id,str) and yt_id else ""
-    msg = (
-        f"📊 <b>Daily Reel Report</b>\n\n"
-        f"<b>Product:</b> {title[:60]}\n"
-        f"<b>Price:</b> {price}   <b>Discount:</b> {discount}\n\n"
-        f"Telegram  {ic(res.get('tg'))}\n"
-        f"Facebook  {ic(res.get('fb'))}\n"
-        f"Instagram {ic(res.get('ig'))}\n"
-        f"YouTube   {ic(res.get('yt'))}"
-        + yt_link
-    )
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{bot.BOT_TOKEN}/sendMessage",
-            data={"chat_id":bot.CHAT_ID,"text":msg,"parse_mode":"HTML"},
-            timeout=15)
-    except Exception:
-        pass
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FALLBACK PRODUCTS
 # ═══════════════════════════════════════════════════════════════════════════════
-FALLBACK_PRODUCTS = [
-    ("boAt Rockerz 450 Wireless Bluetooth Headphones",
-     "₹1,299",
+FALLBACK = [
+    ("boAt Rockerz 450 Wireless Bluetooth Headphones", "₹1,299",
      "https://www.amazon.in/dp/B07QFR85LP?tag=dattatrey07-21",
      "https://m.media-amazon.com/images/I/61PzTlnzGEL._SL1500_.jpg",
      "https://www.amazon.in/dp/B07QFR85LP"),
-    ("Mi Smart Band 7 Fitness Tracker",
-     "₹2,799",
+    ("Mi Smart Band 7 Fitness Tracker with AMOLED Display", "₹2,799",
      "https://www.amazon.in/dp/B0B2Q5TGJP?tag=dattatrey07-21",
      "https://m.media-amazon.com/images/I/51jkrS-bqXL._SL1500_.jpg",
      "https://www.amazon.in/dp/B0B2Q5TGJP"),
+    ("Portronics Charge Mate 10W Wireless Charger", "₹699",
+     "https://www.amazon.in/dp/B08FXNJKTR?tag=dattatrey07-21",
+     "https://m.media-amazon.com/images/I/61NqmHFqwNL._SL1500_.jpg",
+     "https://www.amazon.in/dp/B08FXNJKTR"),
 ]
 
 
@@ -1018,32 +1006,28 @@ FALLBACK_PRODUCTS = [
 # MAIN
 # ═══════════════════════════════════════════════════════════════════════════════
 def post_daily_reel():
-    print("[REEL] ══════════ Daily Reel Job v4 ══════════")
+    print("[REEL] ══════════ Daily Reel Bot v5 ══════════")
 
-    # 1 — Scrape products
+    # 1 — Scrape
     products = None
     for attempt in range(3):
         try:
             products = bot.scrape_products()
             if products: break
-            print(f"[REEL] Scrape {attempt+1} returned 0, retrying...")
         except Exception as e:
             print(f"[REEL] Scrape exception {attempt+1}: {e}")
-        time.sleep(10)
+        time.sleep(8)
 
     if not products:
-        print("[REEL] Using fallback products")
-        products = list(FALLBACK_PRODUCTS)
+        print("[REEL] Scraping failed — using fallback products")
+        products = list(FALLBACK)
 
     title, price, affiliate_link, image_url, base_link = random.choice(products)
 
-    # 2 — Clean link
-    try:
-        affiliate_link = bot.clean_affiliate_url(affiliate_link)
-    except Exception:
-        pass
+    try:   affiliate_link = bot.clean_affiliate_url(affiliate_link)
+    except Exception: pass
 
-    # 3 — Product details
+    # 2 — Details + features
     rating, reviews, discount, features = "", "", "", []
     try:
         r, rv, _, _, discount = bot.get_product_details(base_link)
@@ -1055,28 +1039,22 @@ def post_daily_reel():
     except Exception as e:
         print(f"[REEL] Features error: {e}")
 
-    # 4 — Short link
     short_link = affiliate_link
-    try:
-        short_link = bot.shorten_url(affiliate_link)
-    except Exception:
-        pass
+    try:   short_link = bot.shorten_url(affiliate_link)
+    except Exception: pass
 
-    print(f"[REEL] Title    : {title[:70]}")
-    print(f"[REEL] Price    : {price}  Discount: {discount}")
-    print(f"[REEL] Rating   : {rating}  Reviews: {reviews}")
-    print(f"[REEL] Features : {features}")
-    print(f"[REEL] Link     : {short_link}")
+    print(f"[REEL] Title   : {title[:70]}")
+    print(f"[REEL] Price   : {price}  Discount: {discount}")
+    print(f"[REEL] Feat    : {features}")
+    print(f"[REEL] Link    : {short_link}")
 
-    # 5 — Captions
-    tg_cap = build_seo_caption(title, price, discount, rating, reviews,
-                                affiliate_link, platform="telegram",
-                                features=features)
-    ig_cap = build_seo_caption(title, price, discount, rating, reviews,
-                                short_link, platform="instagram",
-                                features=features)
+    # 3 — Captions
+    tg_cap = build_caption(title, price, discount, rating, reviews,
+                            affiliate_link, platform="telegram", features=features)
+    ig_cap = build_caption(title, price, discount, rating, reviews,
+                            short_link, platform="instagram", features=features)
 
-    # 6 — Create video (2 attempts)
+    # 4 — Video (2 attempts)
     video_path = None
     for attempt in range(2):
         try:
@@ -1089,43 +1067,38 @@ def post_daily_reel():
         time.sleep(5)
 
     if not video_path:
-        print("[REEL] ❌ Video creation failed after 2 attempts — aborting")
+        print("[REEL] ❌ Video creation failed — aborting")
         return
 
-    # 7 — Post to all platforms
+    # 5 — Post
     res = {}
 
     print("\n[REEL] ── Telegram...")
     try:    res["tg"] = post_telegram(video_path, tg_cap)
-    except Exception as e:
-        print(f"[TG] {e}"); res["tg"] = False
-    print(f"[REEL] Telegram  : {'✅' if res['tg'] else '❌'}")
+    except Exception as e: print(f"[TG] {e}"); res["tg"] = False
+    print(f"  Telegram  : {'✅' if res['tg'] else '❌'}")
     time.sleep(4)
 
     print("\n[REEL] ── Facebook...")
     try:    res["fb"] = post_facebook(video_path, ig_cap)
-    except Exception as e:
-        print(f"[FB] {e}"); res["fb"] = False
-    print(f"[REEL] Facebook  : {'✅' if res['fb'] else '❌'}")
+    except Exception as e: print(f"[FB] {e}"); res["fb"] = False
+    print(f"  Facebook  : {'✅' if res['fb'] else '❌'}")
     time.sleep(4)
 
     print("\n[REEL] ── Instagram...")
     try:    res["ig"] = post_instagram(video_path, ig_cap)
-    except Exception as e:
-        print(f"[IG] {e}"); res["ig"] = False
-    print(f"[REEL] Instagram : {'✅' if res['ig'] else '❌'}")
+    except Exception as e: print(f"[IG] {e}"); res["ig"] = False
+    print(f"  Instagram : {'✅' if res['ig'] else '❌'}")
     time.sleep(4)
 
     print("\n[REEL] ── YouTube Shorts...")
     yt_r = False
     try:    yt_r = post_youtube(video_path, title, price, discount,
                                  affiliate_link, features=features)
-    except Exception as e:
-        print(f"[YT] {e}")
+    except Exception as e: print(f"[YT] {e}")
     res["yt"] = bool(yt_r)
-    print(f"[REEL] YouTube   : {'✅' if res['yt'] else '❌'}")
+    print(f"  YouTube   : {'✅' if res['yt'] else '❌'}")
 
-    # 8 — Cleanup
     try:    os.unlink(video_path)
     except Exception: pass
 
