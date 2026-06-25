@@ -2,19 +2,20 @@ name: Daily Reel Post (1 Video/Day)
 
 on:
   schedule:
-    # 10:00 AM IST daily (IST = UTC+5:30, so 04:30 UTC)
+    # 10:00 AM IST (04:30 UTC) — runs every day
     - cron: '30 4 * * *'
-  workflow_dispatch:  # Manual trigger button on GitHub UI
+  workflow_dispatch:   # Manual trigger from GitHub UI
 
 jobs:
   post-reel:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45      # ← was 10 (too short!); video render + IG + YT needs 20-30 min
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -22,15 +23,21 @@ jobs:
       - name: Install system dependencies (ffmpeg + fonts)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg fonts-liberation fonts-dejavu-core
+          sudo apt-get install -y \
+            ffmpeg \
+            fonts-liberation \
+            fonts-dejavu-core \
+            fonts-ubuntu \
+            fonts-freefont-ttf
 
       - name: Install Python dependencies
         run: |
-          pip install requests beautifulsoup4 Pillow google-auth google-auth-oauthlib google-api-python-client
+          pip install requests beautifulsoup4 Pillow \
+            google-auth google-auth-oauthlib google-api-python-client
 
       - name: Post daily reel to all platforms
         env:
-          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_ID:     ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |

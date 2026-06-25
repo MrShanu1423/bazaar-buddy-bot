@@ -282,10 +282,20 @@ def build_frame(title, price, discount, image_url, short_link):
     cta_y = link_y + 110
     pill_badge(draw, W//2, cta_y, "👆  TAP LINK TO BUY NOW  👆", f_cta, C_GOLD, (8,4,20))
 
-    # Branding
-    f_brand = load_font(30)
-    neon_text(draw, (W//2, 1875), "@BazaarBuddyLootDeals  •  Amazon India Deals",
-              f_brand, (180, 140, 255), C_PURPLE)
+    # Subscribe / Follow CTA strip at very bottom
+    draw.rounded_rectangle([0, 1820, W, H], radius=0, fill=(10, 4, 32))
+    draw.rectangle([0, 1820, W, 1824], fill=C_NEON)
+    f_sub  = load_font(30, bold=True)
+    f_fol  = load_font(26)
+    neon_text(draw, (W//2, 1848),
+              "🔔 SUBSCRIBE  •  YouTube: @BazaarBuddyLootDeals",
+              f_sub, C_GOLD, C_GOLD)
+    neon_text(draw, (W//2, 1890),
+              "❤️ Follow on Instagram: @bazaarbuddylootdeals",
+              f_fol, C_CYAN, C_CYAN)
+    neon_text(draw, (W//2, 1920 - 16),
+              "📢 Amazon India Affiliate  |  Tag: dattatrey07-21",
+              f_fol, (160, 120, 255), C_PURPLE)
 
     return img
 
@@ -491,28 +501,33 @@ def build_seo_caption(title, price, discount, rating, reviews, link, platform="i
             f"🔥 <b>{title}</b>\n\n{deal}\n"
             + (f"{p_ln}\n" if p_ln else "")
             + (f"{r_ln}\n" if r_ln else "")
-            + f"\n✅ Amazon India Affiliate Deal\n🔗 {link}"
+            + f"\n✅ Amazon India Affiliate Deal\n🔗 {link}\n\n"
+            f"📢 Join our channel for daily deals!\n"
+            f"👉 https://t.me/BazaarBuddyLootDeals"
         )
     if platform == "youtube":
+        # LINK FIRST — YouTube shows first 2 lines before "Show more"
         return (
-            f"🛒 BUY NOW 👉 {link}\n\n"
+            f"🛒 BUY NOW 👉 {link}\n"
+            f"⬆️ CLICK ABOVE to grab this deal on Amazon India!\n\n"
             f"🔥 {title}\n\n{deal}\n"
             + (f"{p_ln}\n" if p_ln else "")
             + (f"{r_ln}\n" if r_ln else "")
-            + f"\n✅ Amazon India Affiliate Deal (tag: dattatrey07-21)\n"
-            f"📌 Tap the link above to buy!\n\n"
-            f"─────────────────────\n"
-            f"🔔 SUBSCRIBE → @BazaarBuddyLootDeals for daily deals!\n"
-            f"─────────────────────\n\n"
+            + f"\n✅ Amazon India Affiliate Deal (tag: dattatrey07-21)\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔔 SUBSCRIBE for daily Amazon deals!\n"
+            f"👉 https://www.youtube.com/@BazaarBuddyLootDeals\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
             + tags
         )
-    # Instagram / Facebook — link not clickable in caption, but visible
+    # Instagram / Facebook
     return (
         f"🛒 BUY NOW 👉 {link}\n\n"
         f"🔥 {title}\n\n{deal}\n"
         + (f"{p_ln}\n" if p_ln else "")
         + (f"{r_ln}\n" if r_ln else "")
-        + f"\n👆 Link in caption / bio to order!\n\n"
+        + f"\n👆 Tap link in caption to order!\n\n"
+        f"❤️ Follow @bazaarbuddylootdeals for daily deals!\n\n"
         + tags
     )
 
@@ -613,50 +628,71 @@ def get_youtube_access_token():
         print(f"[REEL][YT] Token error: {e}"); return None
 
 
-def post_video_youtube(video_path, title, price, discount, affiliate_link, hashtags):
-    access_token = get_youtube_access_token()
-    if not access_token:
-        print("[REEL][YT] No access token"); return False
-
-    # Always use the clean affiliate link (no viglink)
+def post_video_youtube(video_path, title, price, discount, affiliate_link, hashtags,
+                        max_retries=3):
+    """Upload to YouTube Shorts with retry logic and 5-min upload timeout."""
     clean_link = bot.clean_affiliate_url(affiliate_link)
     short_link = bot.shorten_url(clean_link)
     yt_title   = build_youtube_title(title, price, discount)
     yt_desc    = build_seo_caption(title, price, discount, None, None,
                                     short_link, platform="youtube")
-    try:
-        file_size = os.path.getsize(video_path)
-        init = requests.post(
-            "https://www.googleapis.com/upload/youtube/v3/videos"
-            "?uploadType=resumable&part=snippet,status",
-            headers={"Authorization":f"Bearer {access_token}",
-                     "Content-Type":"application/json",
-                     "X-Upload-Content-Type":"video/mp4",
-                     "X-Upload-Content-Length":str(file_size)},
-            json={"snippet":{"title":yt_title,"description":yt_desc,
-                              "tags":["AmazonDeals","LootDeals","AmazonIndia",
-                                      "Shorts","IndiaShopping","BazaarBuddy",
-                                      "OnlineShopping","DealAlert","FlashSale"],
-                              "categoryId":"26","defaultLanguage":"en"},
-                  "status":{"privacyStatus":"public","selfDeclaredMadeForKids":False}},
-            timeout=30)
-        if init.status_code not in (200,201):
-            print(f"[REEL][YT] Init failed {init.status_code}"); return False
-        upload_url = init.headers.get("Location")
-        if not upload_url:
-            print("[REEL][YT] No upload URL"); return False
-        with open(video_path,"rb") as f:
-            video_bytes = f.read()
-        up = requests.put(upload_url,
-            headers={"Content-Type":"video/mp4","Content-Length":str(file_size)},
-            data=video_bytes, timeout=180)
-        if up.status_code in (200,201):
-            vid_id = up.json().get("id","")
-            print(f"[REEL][YT] ✅ https://youtube.com/shorts/{vid_id}")
-            return True
-        print(f"[REEL][YT] Upload failed {up.status_code}"); return False
-    except Exception as e:
-        print(f"[REEL][YT] Exception: {e}"); return False
+    file_size  = os.path.getsize(video_path)
+
+    for attempt in range(1, max_retries + 1):
+        print(f"[REEL][YT] Upload attempt {attempt}/{max_retries}")
+        access_token = get_youtube_access_token()
+        if not access_token:
+            print("[REEL][YT] No access token — skipping"); return False
+        try:
+            init = requests.post(
+                "https://www.googleapis.com/upload/youtube/v3/videos"
+                "?uploadType=resumable&part=snippet,status",
+                headers={"Authorization":f"Bearer {access_token}",
+                         "Content-Type":"application/json",
+                         "X-Upload-Content-Type":"video/mp4",
+                         "X-Upload-Content-Length":str(file_size)},
+                json={"snippet":{"title":yt_title,"description":yt_desc,
+                                  "tags":["AmazonDeals","LootDeals","AmazonIndia",
+                                          "Shorts","IndiaShopping","BazaarBuddy",
+                                          "OnlineShopping","DealAlert","FlashSale",
+                                          "BuyNow","DealOfTheDay"],
+                                  "categoryId":"26","defaultLanguage":"en"},
+                      "status":{"privacyStatus":"public",
+                                "selfDeclaredMadeForKids":False}},
+                timeout=30)
+
+            if init.status_code not in (200, 201):
+                print(f"[REEL][YT] Init failed {init.status_code}: {init.text[:200]}")
+                time.sleep(5 * attempt); continue
+
+            upload_url = init.headers.get("Location")
+            if not upload_url:
+                print("[REEL][YT] No upload URL"); time.sleep(5); continue
+
+            with open(video_path, "rb") as f:
+                video_bytes = f.read()
+
+            up = requests.put(
+                upload_url,
+                headers={"Content-Type":"video/mp4",
+                         "Content-Length":str(file_size)},
+                data=video_bytes,
+                timeout=300)   # 5-min upload timeout
+
+            if up.status_code in (200, 201):
+                vid_id = up.json().get("id", "")
+                print(f"[REEL][YT] ✅ https://youtube.com/shorts/{vid_id}")
+                return True
+
+            print(f"[REEL][YT] Upload failed {up.status_code}: {up.text[:200]}")
+            time.sleep(10 * attempt)
+
+        except Exception as e:
+            print(f"[REEL][YT] Exception attempt {attempt}: {e}")
+            time.sleep(10 * attempt)
+
+    print("[REEL][YT] All retries exhausted")
+    return False
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
