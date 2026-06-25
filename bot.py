@@ -128,6 +128,28 @@ def get_product_details(product_url):
         return "", "", "", "", ""
 
 
+def get_product_features(product_url):
+    """
+    Scrape bullet-point features from Amazon product page.
+    Returns list of up to 4 short feature strings.
+    """
+    try:
+        resp = requests.get(product_url, headers=HEADERS, timeout=12)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        features = []
+        for li in soup.select("#feature-bullets ul li span.a-list-item"):
+            text = li.get_text(strip=True)
+            if text and len(text) > 10 and "customers" not in text.lower():
+                # Trim to ~55 chars for video display
+                text = text[:55] + ("…" if len(text) > 55 else "")
+                features.append(text)
+            if len(features) >= 4:
+                break
+        return features
+    except Exception:
+        return []
+
+
 def build_caption_plain(title, price, original_price, discount, affiliate_link, rating, reviews, seller):
     """Facebook caption: only affiliate link at top, no prices, only % off."""
     lines = []

@@ -208,7 +208,7 @@ def paste_product_3d(canvas, image_url, box_y0, box_y1):
 
 
 # ─── Main frame builder ───────────────────────────────────────────────────────
-def build_frame(title, price, discount, image_url, short_link):
+def build_frame(title, price, discount, image_url, short_link, features=None):
     img  = Image.new("RGB", (W, H), C_BG1)
     draw = ImageDraw.Draw(img)
 
@@ -231,7 +231,8 @@ def build_frame(title, price, discount, image_url, short_link):
     draw.rectangle([0, 148, W, 154], fill=C_GOLD)
 
     # ── Product image ─────────────────────────────────────────────────────
-    IMG_TOP, IMG_BOT = 162, 1000
+    IMG_TOP = 162
+    IMG_BOT = 840 if features else 1000
     paste_product_3d(img, image_url, IMG_TOP, IMG_BOT)
     draw = ImageDraw.Draw(img)  # refresh after paste
 
@@ -239,13 +240,27 @@ def build_frame(title, price, discount, image_url, short_link):
     f_small = load_font(28, bold=True)
     pill_badge(draw, W - 90, IMG_TOP + 40, "✨ DEAL", f_small, C_GOLD, (10,5,20))
 
-    # ── Bottom info panel ─────────────────────────────────────────────────
-    gradient_bg(draw, W, H - 1010, (14, 8, 45), (6, 4, 22))
-    # Separator line with cyan glow
-    for off, col in [(0, C_CYAN), (1, (0,150,180)), (2, (0,80,120))]:
-        draw.rectangle([0, 1010+off, W, 1013+off], fill=col)
+    # ── Product features bullets (below image) ─────────────────────────────
+    if features:
+        f_feat = load_font(28)
+        feat_icons = ["⚡", "✅", "🔹", "💡"]
+        fy = IMG_BOT + 10
+        for i, feat in enumerate(features[:4]):
+            icon = feat_icons[i % len(feat_icons)]
+            draw.rounded_rectangle([20, fy, W - 20, fy + 40],
+                                    radius=10, fill=(18, 10, 52))
+            draw.rounded_rectangle([20, fy, W - 20, fy + 40],
+                                    radius=10, outline=(70, 40, 140), width=1)
+            draw.text((44, fy + 6), f"{icon} {feat}", font=f_feat, fill=C_WHITE)
+            fy += 46
 
-    y = 1030
+    # ── Bottom info panel ─────────────────────────────────────────────────
+    panel_top = (fy + 6) if features else 1010
+    gradient_bg(draw, W, H - panel_top, (14, 8, 45), (6, 4, 22))
+    for off, col in [(0, C_CYAN), (1, (0,150,180)), (2, (0,80,120))]:
+        draw.rectangle([0, panel_top+off, W, panel_top+3+off], fill=col)
+
+    y = panel_top + 20
 
     # Title
     f_title = load_font(42, bold=True)
@@ -353,15 +368,17 @@ def generate_music_ffmpeg(duration=30):
 
 
 # ─── Animated video creation ──────────────────────────────────────────────────
-def create_reel_video(title, price, discount, image_url, short_link, duration=30):
+def create_reel_video(title, price, discount, image_url, short_link,
+                       features=None, duration=30):
     """
-    Beautiful 3D-animated vertical short:
+    Beautiful 3D-animated vertical short with product features:
     - Ken Burns zoom-pan on the product poster
+    - Feature bullet points below product image
     - Neon text overlays fade/slide in at key timestamps
     - Background music (downloaded or synthesised)
     """
     print("[REEL] Building poster frame...")
-    frame_img  = build_frame(title, price, discount, image_url, short_link)
+    frame_img  = build_frame(title, price, discount, image_url, short_link, features)
     frame_path = tempfile.mktemp(suffix=".jpg")
     frame_img.save(frame_path, quality=97)
     print("[REEL] Frame saved. Downloading music...")
@@ -712,20 +729,23 @@ def post_daily_reel():
     affiliate_link = bot.clean_affiliate_url(affiliate_link)
 
     rating, reviews, seller, original_price, discount = bot.get_product_details(base_link)
+    features   = bot.get_product_features(base_link)   # ← product bullet points
     short_link = bot.shorten_url(affiliate_link)
     hashtags   = bot.generate_hashtags(title)
 
-    print(f"[REEL] Product : {title[:80]}")
-    print(f"[REEL] Link    : {affiliate_link}")
-    print(f"[REEL] Short   : {short_link}")
-    print(f"[REEL] Price   : {price}  |  Discount: {discount}")
+    print(f"[REEL] Product  : {title[:80]}")
+    print(f"[REEL] Link     : {affiliate_link}")
+    print(f"[REEL] Short    : {short_link}")
+    print(f"[REEL] Price    : {price}  |  Discount: {discount}")
+    print(f"[REEL] Features : {features}")
 
     tg_cap = build_seo_caption(title, price, discount, rating, reviews,
                                 affiliate_link, platform="telegram")
     ig_cap = build_seo_caption(title, price, discount, rating, reviews,
                                 short_link, platform="instagram")
 
-    video_path = create_reel_video(title, price, discount, image_url, short_link)
+    video_path = create_reel_video(title, price, discount, image_url, short_link,
+                                    features=features)
     if not video_path:
         print("[REEL] Video creation failed — aborting."); return
 
