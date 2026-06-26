@@ -304,8 +304,8 @@ def scene_product(title, prod_img_pil, rating, reviews):
         except Exception:
             pass
 
-    # AMAZON verified badge
-    pill_btn(draw, W//2, y+36, "✅  Amazon India Verified Deal",
+    # Amazon Loot Deal badge
+    pill_btn(draw, W//2, y+36, "✅  Amazon India Loot Deal — Best Price!",
              font(30, bold=True), GREEN, WHITE)
 
     # Footer
@@ -825,17 +825,17 @@ def build_caption(title, price, discount, rating, reviews, link,
             + (f"{p_ln}\n" if p_ln else "")
             + (f"{r_ln}\n" if r_ln else "")
             + fb
-            + f"\n\n✅ Amazon India Affiliate\n🔗 {link}\n\n"
+            + f"\n\n🔗 {link}\n\n"
             "📢 https://t.me/BazaarBuddyLootDeals"
         )
     if platform == "youtube":
         return (
-            f"🛒 BUY NOW 👉 {link}\n⬆️ Click above!\n\n"
+            f"🛒 BUY NOW 👉 {link}\n⬆️ Click above to order!\n\n"
             f"🔥 {title}\n\n{deal}\n"
             + (f"{p_ln}\n" if p_ln else "")
             + (f"{r_ln}\n" if r_ln else "")
             + fb
-            + "\n\n✅ Amazon India Affiliate (tag: dattatrey07-21)\n\n"
+            + "\n\n✅ Amazon India Loot Deal — Best Price!\n\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "🔔 SUBSCRIBE ▸ https://www.youtube.com/@BazaarBuddyLootDeals\n"
             "📢 Telegram  ▸ https://t.me/BazaarBuddyLootDeals\n"
@@ -922,64 +922,87 @@ def post_instagram(video_path, caption):
     return ok
 
 
-def get_yt_token():
-    if not YOUTUBE_REFRESH_TOKEN: return None
-    try:
-        r = requests.post("https://oauth2.googleapis.com/token",
-            data={"client_id":YOUTUBE_CLIENT_ID,"client_secret":YOUTUBE_CLIENT_SECRET,
-                  "refresh_token":YOUTUBE_REFRESH_TOKEN,"grant_type":"refresh_token"},
-            timeout=20)
-        return r.json().get("access_token")
-    except Exception as e:
-        print(f"[YT] Token error: {e}"); return None
-
-
-def post_youtube(video_path, title, price, discount, affiliate_link,
+def post_youtube(video_path, title, price, discount, buy_link,
                   features=None, max_tries=3):
-    sl    = bot.shorten_url(bot.clean_affiliate_url(affiliate_link))
+    """Upload to YouTube Shorts using google-api-python-client (most reliable)."""
+    if not YOUTUBE_REFRESH_TOKEN:
+        print("[YT] No YOUTUBE_REFRESH_TOKEN — skipping")
+        return False
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+        from googleapiclient.errors import HttpError
+    except ImportError as e:
+        print(f"[YT] google-api-python-client not installed: {e}")
+        return False
+
+    sl      = bot.shorten_url(bot.clean_affiliate_url(buy_link))
     title_s = yt_title(title, price, discount)
     desc    = build_caption(title, price, discount, None, None, sl,
                              platform="youtube", features=features)
-    fsize   = os.path.getsize(video_path)
+    tags    = ["AmazonDeals","LootDeals","AmazonIndia","Shorts","BazaarBuddy",
+               "DealAlert","IndiaDeals","OnlineShopping","FlashSale",
+               "AmazonSale","DealOfTheDay","BestDeals"]
+
+    creds = Credentials(
+        token=None,
+        refresh_token=YOUTUBE_REFRESH_TOKEN,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=YOUTUBE_CLIENT_ID,
+        client_secret=YOUTUBE_CLIENT_SECRET,
+        scopes=["https://www.googleapis.com/auth/youtube.upload"],
+    )
 
     for attempt in range(1, max_tries+1):
-        print(f"[YT] Upload attempt {attempt}/{max_tries}")
-        tok = get_yt_token()
-        if not tok: print("[YT] No token"); return False
+        print(f"[YT] Upload attempt {attempt}/{max_tries}...")
         try:
-            init = requests.post(
-                "https://www.googleapis.com/upload/youtube/v3/videos"
-                "?uploadType=resumable&part=snippet,status",
-                headers={"Authorization":f"Bearer {tok}",
-                         "Content-Type":"application/json",
-                         "X-Upload-Content-Type":"video/mp4",
-                         "X-Upload-Content-Length":str(fsize)},
-                json={
-                    "snippet":{"title":title_s,"description":desc,
-                               "tags":["AmazonDeals","LootDeals","AmazonIndia",
-                                       "Shorts","BazaarBuddy","DealAlert",
-                                       "IndiaDeals","OnlineShopping","FlashSale"],
-                               "categoryId":"26","defaultLanguage":"en"},
-                    "status":{"privacyStatus":"public","selfDeclaredMadeForKids":False}
+            youtube = build("youtube", "v3", credentials=creds,
+                            cache_discovery=False)
+            body = {
+                "snippet": {
+                    "title": title_s,
+                    "description": desc,
+                    "tags": tags,
+                    "categoryId": "26",
+                    "defaultLanguage": "en",
                 },
-                timeout=30)
-            if init.status_code not in (200,201):
-                print(f"[YT] Init {init.status_code}:", init.text[:200])
-                time.sleep(8*attempt); continue
-            up_url = init.headers.get("Location")
-            if not up_url: time.sleep(5); continue
-            with open(video_path,"rb") as f: vb = f.read()
-            up = requests.put(up_url,
-                headers={"Content-Type":"video/mp4","Content-Length":str(fsize)},
-                data=vb, timeout=360)
-            if up.status_code in (200,201):
-                vid = up.json().get("id","")
-                print(f"[YT] ✅ https://youtube.com/shorts/{vid}")
-                return vid or True
-            print(f"[YT] Upload {up.status_code}:", up.text[:200])
-            time.sleep(12*attempt)
+                "status": {
+                    "privacyStatus": "public",
+                    "selfDeclaredMadeForKids": False,
+                    "madeForKids": False,
+                },
+            }
+            media = MediaFileUpload(
+                video_path,
+                mimetype="video/mp4",
+                resumable=True,
+                chunksize=5 * 1024 * 1024,  # 5 MB chunks
+            )
+            insert_req = youtube.videos().insert(
+                part="snippet,status",
+                body=body,
+                media_body=media,
+            )
+            response = None
+            while response is None:
+                status, response = insert_req.next_chunk()
+                if status:
+                    pct = int(status.progress() * 100)
+                    print(f"[YT] Uploading... {pct}%")
+            vid_id = response.get("id", "")
+            print(f"[YT] ✅ https://youtube.com/shorts/{vid_id}")
+            return vid_id or True
+
+        except HttpError as e:
+            print(f"[YT] HttpError {attempt}: {e.status_code} — {e.content[:300]}")
+            if e.status_code in (400, 403):
+                return False  # don't retry auth/quota errors
+            time.sleep(15 * attempt)
         except Exception as e:
-            print(f"[YT] Exception {attempt}: {e}"); time.sleep(12*attempt)
+            print(f"[YT] Exception {attempt}: {e}")
+            time.sleep(15 * attempt)
     return False
 
 
