@@ -946,14 +946,28 @@ def post_youtube(video_path, title, price, discount, buy_link,
                "DealAlert","IndiaDeals","OnlineShopping","FlashSale",
                "AmazonSale","DealOfTheDay","BestDeals"]
 
+    # Build credentials and force-refresh to get a valid access token
+    try:
+        from google.auth.transport.requests import Request as GoogleRequest
+    except ImportError as e:
+        print(f"[YT] google-auth not installed: {e}")
+        return False
+
     creds = Credentials(
         token=None,
         refresh_token=YOUTUBE_REFRESH_TOKEN,
         token_uri="https://oauth2.googleapis.com/token",
         client_id=YOUTUBE_CLIENT_ID,
         client_secret=YOUTUBE_CLIENT_SECRET,
-        scopes=["https://www.googleapis.com/auth/youtube.upload"],
+        scopes=["https://www.googleapis.com/auth/youtube.upload",
+                "https://www.googleapis.com/auth/youtube"],
     )
+    try:
+        creds.refresh(GoogleRequest())
+        print(f"[YT] Token refreshed OK, expires: {creds.expiry}")
+    except Exception as e:
+        print(f"[YT] Token refresh FAILED: {e}")
+        return False
 
     for attempt in range(1, max_tries+1):
         print(f"[YT] Upload attempt {attempt}/{max_tries}...")
@@ -1012,15 +1026,15 @@ def post_youtube(video_path, title, price, discount, buy_link,
 FALLBACK = [
     ("boAt Rockerz 450 Wireless Bluetooth Headphones", "₹1,299",
      "https://www.amazon.in/dp/B07QFR85LP?tag=dattatrey07-21",
-     "https://m.media-amazon.com/images/I/61PzTlnzGEL._SL1500_.jpg",
+     "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900",
      "https://www.amazon.in/dp/B07QFR85LP"),
-    ("Mi Smart Band 7 Fitness Tracker with AMOLED Display", "₹2,799",
-     "https://www.amazon.in/dp/B0B2Q5TGJP?tag=dattatrey07-21",
-     "https://m.media-amazon.com/images/I/51jkrS-bqXL._SL1500_.jpg",
-     "https://www.amazon.in/dp/B0B2Q5TGJP"),
-    ("Portronics Charge Mate 10W Wireless Charger", "₹699",
+    ("Xiaomi Power Bank 3i 20000mAh 18W Fast Charge", "₹1,499",
+     "https://www.amazon.in/dp/B07ZY4QRPF?tag=dattatrey07-21",
+     "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=900",
+     "https://www.amazon.in/dp/B07ZY4QRPF"),
+    ("Portronics Toad 23 Wireless Mouse", "₹499",
      "https://www.amazon.in/dp/B08FXNJKTR?tag=dattatrey07-21",
-     "https://m.media-amazon.com/images/I/61NqmHFqwNL._SL1500_.jpg",
+     "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=900",
      "https://www.amazon.in/dp/B08FXNJKTR"),
 ]
 

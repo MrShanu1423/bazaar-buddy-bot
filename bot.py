@@ -672,7 +672,7 @@ def generate_pinterest_description(title, price, discount, rating, reviews, affi
     india_keywords = (
         "#AmazonIndia #IndiaShopping #BestDealsIndia #OnlineShoppingIndia "
         "#AmazonDeals #LootDeal #IndianShoppers #BudgetBuyIndia #DiscountIndia "
-        "#SaveMoneyIndia #DealOfTheDay #AffiliateDeals #TopDealsIndia "
+        "#SaveMoneyIndia #DealOfTheDay #LootDeals #TopDealsIndia "
     )
     lines.append(india_keywords + hashtags)
     return "\n".join(lines)[:500]   # Pinterest description limit ~500 chars shown
@@ -806,7 +806,7 @@ def post_to_discord(title, price, discount, image_url, affiliate_link, rating, r
             "description": "\n".join(desc_parts)[:2048],
             "color": 0xFF4500,
             "image": {"url": upgrade_image_quality(image_url)},
-            "footer": {"text": "Bazaar Buddy Loot Deals • Amazon India Affiliate"}
+            "footer": {"text": "Bazaar Buddy Loot Deals • Daily Amazon Deals"}
         }
         payload = {
             "username": "Bazaar Buddy 🛒",
